@@ -239,6 +239,15 @@ Read the page and all its sub-pages/blocks to get the complete PRD content. Then
 // LinearIssueCreator returns a prompt instructing Claude to create Linear issues
 // via MCP tools from a JSON task list.
 func LinearIssueCreator(tasksJSON, team string) string {
+	tmpl := loadTemplate("linear-issue-creator.md")
+	if tmpl != "" {
+		return interpolate(tmpl, map[string]string{
+			"tasks_json": tasksJSON,
+			"team":       team,
+		})
+	}
+
+	// Inline fallback
 	return fmt.Sprintf(`You are a project tracking assistant. Create Linear issues from the following task list.
 
 ## Team
