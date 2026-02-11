@@ -88,7 +88,8 @@ Issues are topologically sorted by dependencies and executed in parallel batches
 ```bash
 # 1. Clone and configure
 cp .env.example .env
-# Edit .env with your API keys if needed
+cp manifest.example.yaml manifest.yaml
+# Edit .env with your API keys and manifest.yaml with your repos/PRD
 
 # 2. Build everything (frontend + backend)
 make all
@@ -142,7 +143,7 @@ curl -X POST http://localhost:3000/api/run
 
 ### `POST /api/init`
 
-Creates a new run. Writes `manifest.yaml` to disk and initializes the engine.
+Creates a new run. Writes the manifest to disk and initializes the engine.
 
 ```json
 {
@@ -192,7 +193,7 @@ Open `http://localhost:3000` after starting the server.
 | **Logs** | Real-time agent output, filterable by agent type and issue |
 | **Metrics** | Token usage, cost breakdown by agent, phase timing bars |
 | **Artifacts** | View generated documents (scoping doc, PERT) |
-| **Manifest Editor** | Edit `manifest.yaml` from the browser |
+| **Manifest Editor** | Edit the manifest from the browser |
 | **Approval Gate** | Modal with artifact reference, approve/reject with comments |
 
 Events stream in real-time via WebSocket.
@@ -209,9 +210,13 @@ LINEAR_API_KEY=       # Enables Linear issue creation in the tracking phase
 NOTION_API_KEY=       # Enables reading PRDs from Notion pages
 ```
 
-### manifest.yaml
+### manifest.example.yaml
 
-Can be created manually or via `POST /api/init`:
+Copy to `manifest.yaml` before use, or create via `POST /api/init`:
+
+```bash
+cp manifest.example.yaml manifest.yaml
+```
 
 ```yaml
 prd: https://notion.so/org/my-prd-page    # or ./local-prd.md
