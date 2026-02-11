@@ -41,6 +41,7 @@ type Store interface {
 
 	// Executions
 	CreateExecution(rec engine.ExecutionRecord) error
+	GetExecution(id string) (*engine.ExecutionRecord, error)
 	UpdateExecutionStatus(id string, status engine.ExecutionStatus, errorMsg string) error
 	UpdateExecutionTokens(id string, tokensIn, tokensOut int64) error
 	ListExecutions(runID string) ([]engine.ExecutionRecord, error)

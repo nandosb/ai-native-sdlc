@@ -213,11 +213,34 @@ func (s *Server) handleCreateExecution(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetExecution(w http.ResponseWriter, _ *http.Request, execID string) {
 	exec := s.execMgr.Get(execID)
-	if exec == nil {
-		http.Error(w, "execution not found", http.StatusNotFound)
+	if exec != nil {
+		writeJSON(w, exec)
 		return
 	}
-	writeJSON(w, exec)
+
+	// Fall back to store for persisted executions not in memory
+	if s.store != nil {
+		rec, err := s.store.GetExecution(execID)
+		if err == nil && rec != nil {
+			writeJSON(w, &engine.Execution{
+				ID:        rec.ID,
+				RunID:     rec.RunID,
+				ParentID:  rec.ParentID,
+				Type:      rec.Type,
+				Phase:     rec.Phase,
+				IssueID:   rec.IssueID,
+				Status:    rec.Status,
+				SessionID: rec.SessionID,
+				TokensIn:  rec.TokensIn,
+				TokensOut: rec.TokensOut,
+				CreatedAt: rec.CreatedAt,
+				UpdatedAt: rec.UpdatedAt,
+			})
+			return
+		}
+	}
+
+	http.Error(w, "execution not found", http.StatusNotFound)
 }
 
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, execID string) {

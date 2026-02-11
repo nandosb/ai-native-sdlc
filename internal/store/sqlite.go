@@ -373,6 +373,28 @@ func (s *SQLiteStore) CreateExecution(rec engine.ExecutionRecord) error {
 	return err
 }
 
+func (s *SQLiteStore) GetExecution(id string) (*engine.ExecutionRecord, error) {
+	var rec engine.ExecutionRecord
+	var execType, status string
+	err := s.db.QueryRow(
+		`SELECT id, run_id, parent_id, type, phase, issue_id, status, session_id, tokens_in, tokens_out, error_message, created_at, updated_at
+		 FROM executions WHERE id = ?`, id,
+	).Scan(
+		&rec.ID, &rec.RunID, &rec.ParentID, &execType, &rec.Phase, &rec.IssueID,
+		&status, &rec.SessionID, &rec.TokensIn, &rec.TokensOut, &rec.ErrorMessage,
+		&rec.CreatedAt, &rec.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rec.Type = engine.ExecutionType(execType)
+	rec.Status = engine.ExecutionStatus(status)
+	return &rec, nil
+}
+
 func (s *SQLiteStore) UpdateExecutionStatus(id string, status engine.ExecutionStatus, errorMsg string) error {
 	_, err := s.db.Exec(
 		`UPDATE executions SET status = ?, error_message = ?, updated_at = datetime('now') WHERE id = ?`,
