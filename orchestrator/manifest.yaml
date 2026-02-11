@@ -1,0 +1,18 @@
+# Agentic SDLC Manifest
+# This file configures which repos and PRD to process in a run.
+#
+# Usage: /sdlc-run manifest.yaml
+#
+# Fields:
+#   prd       — Notion URL of the PRD page (read via Notion MCP)
+#   repos[]   — list of repositories to work on
+#     name    — short name used in state.json and Linear issues
+#     path    — relative or absolute path to the repo root
+#     team    — Linear team name for issue creation
+#     language — (optional) override auto-detection (go, typescript, python)
+#     skills  — (optional) additional skills to inject into coder agent
+
+repos:
+  - name: booking-app
+    path: /Users/jorgevillafuerte/Documents/projects/booking-app
+    team: Ignite-2026

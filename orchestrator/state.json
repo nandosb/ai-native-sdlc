@@ -1,0 +1,183 @@
+{
+  "run_id": "2026-02-10-home-reservations",
+  "prd_url": "file:///Users/jorgevillafuerte/go/src/yalochat/agentic-sdlc/examples/home-reservations.prd.md",
+  "phase": "EXECUTING",
+  "phase_status": "in_progress",
+  "bootstrap": {
+    "languages": { "booking-app": "typescript" },
+    "docs_generated": { "booking-app": "docs/add-claude-md#81646ab" }
+  },
+  "artifacts": {
+    "scoping_doc": "artifacts/scoping-doc.md",
+    "pert": "artifacts/pert.md"
+  },
+  "issues": {
+    "IGN-1": {
+      "repo": "booking-app",
+      "title": "GET /api/reservations endpoint with DRY row mapping",
+      "status": "done",
+      "pr": "jorgevillafuerte/booking-app#2",
+      "pr_number": 2,
+      "branch": "feature/ign-1-get-reservations-list",
+      "blocked_by": [],
+      "review_iterations": 1,
+      "human_iterations": 0
+    },
+    "IGN-2": {
+      "repo": "booking-app",
+      "title": "Frontend API client and i18n strings",
+      "status": "done",
+      "pr": "jorgevillafuerte/booking-app#1",
+      "pr_number": 1,
+      "branch": "feature/ign-2-api-client-i18n",
+      "blocked_by": [],
+      "review_iterations": 1,
+      "human_iterations": 0
+    },
+    "IGN-3": {
+      "repo": "booking-app",
+      "title": "ReservationCard component",
+      "status": "done",
+      "pr": "jorgevillafuerte/booking-app#3",
+      "pr_number": 3,
+      "branch": "feature/ign-3-reservation-card",
+      "blocked_by": [],
+      "review_iterations": 1,
+      "human_iterations": 0
+    },
+    "IGN-4": {
+      "repo": "booking-app",
+      "title": "HomeScreen component with loading, error, and empty states",
+      "status": "reviewing",
+      "pr": "jorgevillafuerte/booking-app#4",
+      "pr_number": 4,
+      "branch": "feature/ign-4-home-screen",
+      "blocked_by": [],
+      "review_iterations": 0,
+      "human_iterations": 0
+    },
+    "IGN-5": {
+      "repo": "booking-app",
+      "title": "App navigation wiring and post-confirmation flow",
+      "status": "blocked",
+      "pr": null,
+      "pr_number": null,
+      "blocked_by": ["IGN-4"],
+      "review_iterations": 0,
+      "human_iterations": 0
+    }
+  },
+  "updated_at": "2026-02-11T01:09:00Z",
+  "metrics": {
+    "started_at": "2026-02-10T12:00:00Z",
+    "phases": {
+      "BOOTSTRAP": {
+        "started_at": "2026-02-10T12:00:00Z",
+        "ended_at": "2026-02-10T12:02:00Z",
+        "duration_s": 120
+      },
+      "DESIGN": {
+        "started_at": "2026-02-10T12:02:00Z",
+        "ended_at": "2026-02-10T12:10:00Z",
+        "duration_s": 480
+      },
+      "PLANNING": {
+        "started_at": "2026-02-10T12:10:00Z",
+        "ended_at": "2026-02-10T12:15:00Z",
+        "duration_s": 300
+      },
+      "TRACKING": {
+        "started_at": "2026-02-10T12:15:00Z",
+        "ended_at": "2026-02-10T12:16:00Z",
+        "duration_s": 60
+      },
+      "EXECUTING": {
+        "started_at": "2026-02-10T12:16:00Z",
+        "ended_at": null,
+        "duration_s": null
+      }
+    },
+    "agent_invocations": [
+      {
+        "agent": "doc-generator",
+        "model": "sonnet",
+        "repo": "booking-app",
+        "issue": null,
+        "started_at": "2026-02-10T12:00:30Z",
+        "duration_s": 101,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "solution-designer",
+        "model": "opus",
+        "repo": null,
+        "issue": null,
+        "started_at": "2026-02-10T12:02:00Z",
+        "duration_s": 118,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "task-decomposer",
+        "model": "opus",
+        "repo": null,
+        "issue": null,
+        "started_at": "2026-02-10T12:10:00Z",
+        "duration_s": 77,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "coder",
+        "model": "sonnet",
+        "repo": "booking-app",
+        "issue": "IGN-1",
+        "started_at": "2026-02-10T12:16:30Z",
+        "duration_s": 120,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "quality-reviewer",
+        "model": "opus",
+        "repo": "booking-app",
+        "issue": "IGN-1",
+        "started_at": "2026-02-10T12:19:00Z",
+        "duration_s": 102,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "coder",
+        "model": "sonnet",
+        "repo": "booking-app",
+        "issue": "IGN-2",
+        "started_at": "2026-02-10T12:21:00Z",
+        "duration_s": 446,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "quality-reviewer",
+        "model": "opus",
+        "repo": "booking-app",
+        "issue": "IGN-2",
+        "started_at": "2026-02-10T12:29:00Z",
+        "duration_s": 73,
+        "tokens": { "input": 0, "output": 0 }
+      },
+      {
+        "agent": "session-resumer",
+        "model": "sonnet",
+        "repo": null,
+        "issue": null,
+        "started_at": "2026-02-11T01:05:00Z",
+        "duration_s": 38,
+        "tokens": { "input": 0, "output": 0 }
+      }
+    ],
+    "totals": {
+      "duration_s": 2400,
+      "agent_spawns": 8,
+      "review_iterations": { "agent": 2, "human": 0 },
+      "issues_created": 5,
+      "prs_created": 3,
+      "prs_merged": 3
+    }
+  }
+}

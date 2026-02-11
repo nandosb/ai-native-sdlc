@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/track-agent-metrics.sh",
+            "timeout": 30,
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+  "mcpServers": {
+    "linear": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/linear-mcp-server"],
+      "env": { "LINEAR_API_KEY": "LINEAR_API_KEY" }
+    }
+  }
+}
