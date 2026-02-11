@@ -309,9 +309,9 @@ else
   substep "Configuring Claude permissions..."
   mkdir -p "$PROJECT_DIR/.claude"
   
-  if [[ ! -f "$PROJECT_DIR/.claude/settings.local.json" ]]; then
+  if [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]]; then
     substep "Downloading settings template from ai-native-sdlc repository..."
-    if curl -fsSL https://raw.githubusercontent.com/nandosb/ai-native-sdlc/main/claude-templates/settings.local.json -o "$PROJECT_DIR/.claude/settings.local.json"; then
+    if curl -fsSL https://raw.githubusercontent.com/nandosb/ai-native-sdlc/main/claude-templates/settings.json -o "$PROJECT_DIR/.claude/settings.json"; then
       success "Applied pre-configured permissions from remote template"
     else
       warn "Failed to download settings template from remote repository"
