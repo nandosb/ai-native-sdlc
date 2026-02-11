@@ -117,6 +117,21 @@ Rules:
 - Use "S" (< 1 hour), "M" (1-3 hours), "L" (3-8 hours) estimates`, scopingContent, repoSummary)
 }
 
+// TaskDecomposerFromNotion returns a prompt that instructs Claude to first
+// fetch a scoping document from Notion via MCP tools, then decompose it.
+func TaskDecomposerFromNotion(notionURL, repoSummary string) string {
+	preamble := fmt.Sprintf(`IMPORTANT: The scoping document is stored in Notion. Before doing anything else, use your Notion MCP tools to read the full content of this page:
+
+%s
+
+Read the page and all its sub-pages/blocks to get the complete scoping document content. Then proceed with the instructions below using that content as the scoping document.
+
+`, notionURL)
+
+	base := TaskDecomposer("[Scoping document content fetched from Notion — see instructions above]", repoSummary)
+	return preamble + base
+}
+
 // Coder returns the prompt for implementing an issue.
 func Coder(issueTitle, issueID, language string) string {
 	tmpl := loadTemplate("coder.md")

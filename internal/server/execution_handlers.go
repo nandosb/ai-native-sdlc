@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -408,7 +409,27 @@ func buildPrompt(phase string, params map[string]string, eng *engine.Engine) str
 		if doc == "" && eng != nil {
 			doc = eng.State.Artifacts["scoping_doc"]
 		}
-		return "You are a task decomposer. Read the scoping document and produce a PERT chart with issues. Scoping doc path: " + doc
+		repoSummary := ""
+		if eng != nil {
+			repoSummary = buildRepoSummaryServer(eng.State.Repos)
+		}
+		// Check if the scoping doc is a Notion URL
+		if isNotionURLServer(doc) {
+			notion := integrations.NewNotionClient()
+			if notion.IsConfigured() {
+				content, err := notion.ReadPage(doc)
+				if err == nil {
+					return prompts.TaskDecomposer(content, repoSummary)
+				}
+				log.Printf("[exec] failed to pre-fetch scoping doc from Notion: %v, falling back to MCP tools", err)
+			}
+			return prompts.TaskDecomposerFromNotion(doc, repoSummary)
+		}
+		// Local file — read its contents for the prompt
+		if content, err := os.ReadFile(doc); err == nil {
+			return prompts.TaskDecomposer(string(content), repoSummary)
+		}
+		return prompts.TaskDecomposer(doc, repoSummary)
 	case "tracking":
 		pert := params["pert"]
 		if pert == "" && eng != nil {
@@ -444,6 +465,21 @@ func toolsForPhase(phase string, params map[string]string, eng *engine.Engine) [
 			notion := integrations.NewNotionClient()
 			if !notion.IsConfigured() {
 				// No API key — need MCP tools to read Notion
+				return append(base, "mcp__plugin_Notion_notion__*")
+			}
+		}
+		return base
+	case "planning":
+		doc := ""
+		if params != nil {
+			doc = params["scoping_doc"]
+		}
+		if doc == "" && eng != nil {
+			doc = eng.State.Artifacts["scoping_doc"]
+		}
+		if isNotionURLServer(doc) {
+			notion := integrations.NewNotionClient()
+			if !notion.IsConfigured() {
 				return append(base, "mcp__plugin_Notion_notion__*")
 			}
 		}
