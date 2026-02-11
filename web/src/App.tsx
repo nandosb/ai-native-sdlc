@@ -5,6 +5,7 @@ import { AgentLogs } from './components/AgentLogs'
 import { ManifestEditor } from './components/ManifestEditor'
 import { RunSelector } from './components/RunSelector'
 import { Runs } from './components/Runs'
+import { Help } from './components/Help'
 import { useWebSocket } from './hooks/useWebSocket'
 import { fetchStatus, type StatusResponse } from './lib/api'
 import {
@@ -15,9 +16,10 @@ import {
   Play,
   Wifi,
   WifiOff,
+  HelpCircle,
 } from 'lucide-react'
 
-type Tab = 'dashboard' | 'runs' | 'issues' | 'logs' | 'config'
+type Tab = 'dashboard' | 'runs' | 'issues' | 'logs' | 'config' | 'help'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => {
@@ -52,6 +54,7 @@ export default function App() {
     { id: 'issues', label: 'Issues', icon: KanbanSquare },
     { id: 'logs', label: 'Logs', icon: Terminal },
     { id: 'config', label: 'Config', icon: Settings },
+    { id: 'help', label: 'Help', icon: HelpCircle },
   ]
 
   return (
@@ -107,6 +110,7 @@ export default function App() {
         {tab === 'issues' && <IssueBoard />}
         {tab === 'logs' && <AgentLogs events={runEvents} />}
         {tab === 'config' && <ManifestEditor />}
+        {tab === 'help' && <Help />}
       </main>
     </div>
   )
