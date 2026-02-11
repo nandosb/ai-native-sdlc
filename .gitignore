@@ -3,9 +3,6 @@ sdlc.db
 sdlc.db-wal
 sdlc.db-journal
 
-# Binary
-sdlc
-
 # Environment
 .env
 
