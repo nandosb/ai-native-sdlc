@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Play, Plus, Loader2 } from 'lucide-react'
-import { createExecution, runAll, type StatusResponse } from '../lib/api'
+import { createExecution, type StatusResponse } from '../lib/api'
 import type { WSEvent } from '../hooks/useWebSocket'
 import { useRuns } from '../hooks/useRuns'
 import { RunsSidebar } from './runs/RunsSidebar'
@@ -27,23 +27,6 @@ export function Runs({ status, events }: Props) {
       localStorage.removeItem('sdlc:selectedExecutionId')
     }
   }, [selectedId])
-  const [pipelineRunning, setPipelineRunning] = useState(false)
-
-  // Detect if any run is currently active (running)
-  const hasActiveRun = runs.some((r) => r.phase_status === 'running')
-
-  const handleRunPipeline = useCallback(async () => {
-    setPipelineRunning(true)
-    try {
-      await runAll()
-      refreshRuns()
-    } catch (err) {
-      console.error('Failed to run pipeline:', err)
-    } finally {
-      setPipelineRunning(false)
-    }
-  }, [refreshRuns])
-
   const handleNewExecution = async (phase: string, params: Record<string, string>) => {
     try {
       const result = await createExecution({
@@ -68,24 +51,11 @@ export function Runs({ status, events }: Props) {
           {/* Action buttons */}
           <div className="flex gap-2">
             <button
-              onClick={handleRunPipeline}
-              disabled={pipelineRunning || hasActiveRun}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title={hasActiveRun ? 'Pipeline already running' : 'Run full SDLC pipeline'}
-            >
-              {pipelineRunning ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Play size={16} />
-              )}
-              Run Pipeline
-            </button>
-            <button
               onClick={() => setShowNewForm(true)}
-              className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
             >
               <Plus size={16} />
-              Phase
+              New Phase
             </button>
           </div>
 
@@ -113,13 +83,6 @@ export function Runs({ status, events }: Props) {
                   <Play size={32} className="mb-3 text-gray-600" />
                   <p className="text-sm">Select an execution or start a new one</p>
                   <div className="flex gap-3 mt-4">
-                    <button
-                      onClick={handleRunPipeline}
-                      disabled={pipelineRunning || hasActiveRun}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Run Pipeline
-                    </button>
                     <button
                       onClick={() => setShowNewForm(true)}
                       className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
