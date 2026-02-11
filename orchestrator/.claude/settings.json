@@ -18,6 +18,14 @@
       "command": "npx",
       "args": ["-y", "@anthropic/linear-mcp-server"],
       "env": { "LINEAR_API_KEY": "LINEAR_API_KEY" }
+    },
+    "snyk": {
+      "command": "snyk",
+      "args": [
+        "mcp",
+        "-t",
+        "stdio"
+      ]
     }
   }
 }
