@@ -155,15 +155,6 @@ if [[ -d "$PROJECT_DIR/.claude" ]]; then
   exit 0
 fi
 
-# Confirm to proceed
-if ! confirm "Ready to set up your development environment?"; then
-  echo -e "${YELLOW}Setup cancelled by user.${NC}"
-  exit 0
-fi
-
-echo ""
-
-
 echo ""
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -217,9 +208,263 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step 3: Configure MCP Servers
+# Step 3: Install GitHub CLI
 # ─────────────────────────────────────────────────────────────────────────────
-step "Step 3/4: Configuring MCP Servers"
+step "Step 3/6: Installing GitHub CLI"
+
+if command -v gh &>/dev/null; then
+  substep "GitHub CLI is already installed ($(gh --version | head -n1))"
+  info "Skipping GitHub CLI installation"
+  INSTALLED_COMPONENTS+=("GitHub CLI (already installed)")
+else
+  substep "Installing GitHub CLI..."
+  if brew install gh 2>/dev/null || (type brew >/dev/null 2>&1 && brew install gh); then
+    if command -v gh &>/dev/null; then
+      success "GitHub CLI installed successfully ($(gh --version | head -n1))"
+      INSTALLED_COMPONENTS+=("GitHub CLI")
+    else
+      warn "GitHub CLI installation completed but command not found"
+      SKIPPED_COMPONENTS+=("GitHub CLI (installation issue)")
+    fi
+  else
+    warn "Homebrew not available, trying alternative installation method..."
+    if curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg 2>/dev/null; then
+      warn "GitHub CLI installation requires Homebrew on macOS"
+      warn "Please install Homebrew first: https://brew.sh"
+      SKIPPED_COMPONENTS+=("GitHub CLI (requires Homebrew)")
+    else
+      warn "Failed to install GitHub CLI"
+      SKIPPED_COMPONENTS+=("GitHub CLI (installation failed)")
+    fi
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 4: Install Snyk CLI
+# ─────────────────────────────────────────────────────────────────────────────
+step "Step 4/7: Installing Snyk CLI"
+
+if command -v snyk &>/dev/null; then
+  substep "Snyk CLI is already installed ($(snyk --version))"
+  info "Skipping Snyk CLI installation"
+  INSTALLED_COMPONENTS+=("Snyk CLI (already installed)")
+else
+  substep "Installing Snyk CLI..."
+  if brew install snyk 2>/dev/null || (type brew >/dev/null 2>&1 && brew install snyk); then
+    if command -v snyk &>/dev/null; then
+      success "Snyk CLI installed successfully ($(snyk --version))"
+      INSTALLED_COMPONENTS+=("Snyk CLI")
+    else
+      warn "Snyk CLI installation completed but command not found"
+      SKIPPED_COMPONENTS+=("Snyk CLI (installation issue)")
+    fi
+  else
+    warn "Homebrew installation failed, trying npm..."
+    if command -v npm &>/dev/null; then
+      if npm install -g snyk 2>/dev/null; then
+        if command -v snyk &>/dev/null; then
+          success "Snyk CLI installed successfully via npm ($(snyk --version))"
+          INSTALLED_COMPONENTS+=("Snyk CLI")
+        else
+          warn "Snyk CLI npm installation completed but command not found"
+          SKIPPED_COMPONENTS+=("Snyk CLI (installation issue)")
+        fi
+      else
+        warn "Failed to install Snyk CLI via npm"
+        SKIPPED_COMPONENTS+=("Snyk CLI (npm installation failed)")
+      fi
+    else
+      warn "Neither Homebrew nor npm available for Snyk CLI installation"
+      warn "Please install Homebrew (https://brew.sh) or npm first"
+      SKIPPED_COMPONENTS+=("Snyk CLI (requires Homebrew or npm)")
+    fi
+  fi
+fi
+
+# Authenticate Snyk if installed
+if command -v snyk &>/dev/null; then
+  echo ""
+  substep "Checking Snyk authentication status..."
+  
+  # Check if already authenticated by testing a simple command
+  if snyk config get api &>/dev/null || snyk test --help 2>&1 | grep -q "test"; then
+    info "Snyk is already authenticated"
+    INSTALLED_COMPONENTS+=("Snyk authentication (already configured)")
+  else
+    echo ""
+    echo -e "${CYAN}${BOLD}Snyk Authentication Required${NC}"
+    echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
+    echo ""
+    echo -e "${DIM}Snyk needs to be authenticated to perform security scans in your repository.${NC}"
+    echo ""
+    echo -e "${CYAN}${BOLD}Authentication Options:${NC}"
+    echo -e "  ${CYAN}1.${NC} Web authentication (opens browser) - ${BOLD}Recommended${NC}"
+    echo -e "  ${CYAN}2.${NC} Set SNYK_TOKEN environment variable"
+    echo -e "  ${CYAN}3.${NC} Skip authentication (can do later)"
+    echo ""
+    
+    read -rp "$(echo -e "${YELLOW}[?]${NC} Choose an option (1/2/3): ")" SNYK_AUTH_CHOICE
+    
+    case "$SNYK_AUTH_CHOICE" in
+      1)
+        substep "Opening Snyk authentication in browser..."
+        if snyk auth; then
+          success "Snyk authenticated successfully"
+          INSTALLED_COMPONENTS+=("Snyk authentication")
+        else
+          warn "Snyk authentication failed or was cancelled"
+          SKIPPED_COMPONENTS+=("Snyk authentication (failed)")
+        fi
+        ;;
+      2)
+        echo ""
+        echo -e "${DIM}Get your Snyk API token from: ${NC}${BLUE}https://app.snyk.io/account${NC}"
+        read -rp "$(echo -e "${YELLOW}[?]${NC} Enter your Snyk API token: ")" SNYK_TOKEN_INPUT
+        
+        if [[ -n "$SNYK_TOKEN_INPUT" ]]; then
+          export SNYK_TOKEN="$SNYK_TOKEN_INPUT"
+          echo "export SNYK_TOKEN=\"$SNYK_TOKEN_INPUT\"" >> "$HOME/.zshrc" 2>/dev/null || true
+          echo "export SNYK_TOKEN=\"$SNYK_TOKEN_INPUT\"" >> "$HOME/.bashrc" 2>/dev/null || true
+          
+          if snyk auth "$SNYK_TOKEN_INPUT" 2>/dev/null || snyk test --help &>/dev/null; then
+            success "Snyk token configured successfully"
+            INSTALLED_COMPONENTS+=("Snyk authentication (token)")
+          else
+            warn "Failed to validate Snyk token"
+            SKIPPED_COMPONENTS+=("Snyk authentication (invalid token)")
+          fi
+        else
+          warn "No token provided, skipping Snyk authentication"
+          SKIPPED_COMPONENTS+=("Snyk authentication (no token)")
+        fi
+        ;;
+      3|*)
+        warn "Skipping Snyk authentication - you can authenticate later with: snyk auth"
+        SKIPPED_COMPONENTS+=("Snyk authentication (skipped)")
+        ;;
+    esac
+  fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 5: Download Claude Configuration Files
+# ─────────────────────────────────────────────────────────────────────────────
+step "Step 5/7: Downloading Claude Configuration Files"
+
+echo ""
+
+# Create .claude directory if it doesn't exist and download settings
+substep "Configuring Claude permissions..."
+mkdir -p "$PROJECT_DIR/.claude"
+
+if [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]]; then
+  substep "Downloading settings template from ai-native-sdlc repository..."
+  if curl -fsSL https://raw.githubusercontent.com/nandosb/ai-native-sdlc/main/claude-templates/settings.json -o "$PROJECT_DIR/.claude/settings.json"; then
+    success "Applied pre-configured permissions from remote template"
+    INSTALLED_COMPONENTS+=("Claude settings.json")
+  else
+    warn "Failed to download settings template from remote repository"
+    SKIPPED_COMPONENTS+=("Claude settings.json (download failed)")
+  fi
+else
+  substep "Settings file already exists, skipping template download"
+  INSTALLED_COMPONENTS+=("Claude settings.json (already exists)")
+fi
+
+# Configure Snyk MCP server if Snyk is authenticated
+echo ""
+substep "Checking Snyk MCP server configuration..."
+
+if ! command -v snyk &>/dev/null; then
+  substep "Snyk CLI not found, skipping MCP configuration"
+elif ! snyk config get api &>/dev/null; then
+  substep "Snyk not authenticated, skipping MCP configuration"
+elif [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]]; then
+  warn "settings.json not found, skipping Snyk MCP configuration"
+  SKIPPED_COMPONENTS+=("Snyk MCP server (no settings.json)")
+else
+  substep "Configuring Snyk MCP server..."
+  
+  # Check if jq is installed, install if not
+  if ! command -v jq &>/dev/null; then
+    substep "Installing jq for JSON manipulation..."
+    if brew install jq 2>/dev/null; then
+      success "jq installed successfully"
+    else
+      warn "Failed to install jq, skipping Snyk MCP configuration"
+      SKIPPED_COMPONENTS+=("Snyk MCP server (jq installation failed)")
+    fi
+  fi
+  
+  # Add Snyk MCP server to settings.json using jq
+  if command -v jq &>/dev/null; then
+    if jq '.mcpServers.snyk = {"command": "snyk", "args": ["mcp", "-t", "stdio"]}' \
+      "$PROJECT_DIR/.claude/settings.json" > "$PROJECT_DIR/.claude/settings.json.tmp" && \
+      mv "$PROJECT_DIR/.claude/settings.json.tmp" "$PROJECT_DIR/.claude/settings.json"; then
+      success "Snyk MCP server configured in settings.json"
+      INSTALLED_COMPONENTS+=("Snyk MCP server")
+    else
+      warn "Failed to configure Snyk MCP server in settings.json"
+      SKIPPED_COMPONENTS+=("Snyk MCP server (configuration failed)")
+    fi
+  fi
+fi
+
+# Download Claude commands from remote repository
+echo ""
+substep "Syncing Claude commands from repository..."
+mkdir -p "$PROJECT_DIR/.claude/commands"
+
+# Create a temporary directory for cloning
+TEMP_REPO=$(mktemp -d)
+
+substep "Fetching latest commands from ai-native-sdlc repository..."
+if git clone --depth 1 --filter=blob:none --sparse https://github.com/nandosb/ai-native-sdlc.git "$TEMP_REPO" 2>/dev/null; then
+  cd "$TEMP_REPO" || error "Failed to change to temp directory"
+  git sparse-checkout set claude-commands 2>/dev/null
+  
+  # Copy command files that don't exist locally
+  if [[ -d "$TEMP_REPO/claude-commands" ]]; then
+    files_synced=0
+    files_skipped=0
+    
+    for cmd_file in "$TEMP_REPO/claude-commands"/*.md; do
+      if [[ -f "$cmd_file" ]]; then
+        filename=$(basename "$cmd_file")
+        if [[ ! -f "$PROJECT_DIR/.claude/commands/$filename" ]]; then
+          cp "$cmd_file" "$PROJECT_DIR/.claude/commands/$filename"
+          ((files_synced++))
+        else
+          ((files_skipped++))
+        fi
+      fi
+    done
+    
+    cd "$PROJECT_DIR" || error "Failed to return to project directory"
+    rm -rf "$TEMP_REPO"
+    
+    if [[ $files_synced -gt 0 ]]; then
+      success "Synced $files_synced command file(s)"
+      INSTALLED_COMPONENTS+=("Claude commands ($files_synced files)")
+    fi
+    if [[ $files_skipped -gt 0 ]]; then
+      substep "Skipped $files_skipped existing file(s)"
+    fi
+  else
+    warn "claude-commands directory not found in repository"
+    rm -rf "$TEMP_REPO"
+    SKIPPED_COMPONENTS+=("Claude commands (directory not found)")
+  fi
+else
+  warn "Failed to clone ai-native-sdlc repository"
+  rm -rf "$TEMP_REPO" 2>/dev/null || true
+  SKIPPED_COMPONENTS+=("Claude commands (clone failed)")
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Step 6: Configure MCP Servers
+# ─────────────────────────────────────────────────────────────────────────────
+step "Step 6/7: Configuring MCP Servers"
 
 echo ""
 echo -e "${DIM}MCP (Model Context Protocol) servers enhance Claude with additional capabilities.${NC}"
@@ -285,9 +530,9 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step 4: Initialize Claude Project
+# Step 7: Initialize Claude Project
 # ─────────────────────────────────────────────────────────────────────────────
-step "Step 4/4: Initializing Claude Project"
+step "Step 7/7: Initializing Claude Project"
 
 echo ""
 substep "Checking for existing claude.md file..."
@@ -305,81 +550,70 @@ else
   # Change to project directory and initialize
   cd "$PROJECT_DIR" || error "Failed to change to project directory"
   
-  # Create .claude directory if it doesn't exist and download settings
-  substep "Configuring Claude permissions..."
-  mkdir -p "$PROJECT_DIR/.claude"
-  
-  if [[ ! -f "$PROJECT_DIR/.claude/settings.json" ]]; then
-    substep "Downloading settings template from ai-native-sdlc repository..."
-    if curl -fsSL https://raw.githubusercontent.com/nandosb/ai-native-sdlc/main/claude-templates/settings.json -o "$PROJECT_DIR/.claude/settings.json"; then
-      success "Applied pre-configured permissions from remote template"
-    else
-      warn "Failed to download settings template from remote repository"
-    fi
-  else
-    substep "Settings file already exists, skipping template download"
-  fi
-  
-  # Download Claude commands from remote repository
-  substep "Syncing Claude commands from repository..."
-  mkdir -p "$PROJECT_DIR/.claude/commands"
-  
-  # Create a temporary directory for cloning
-  TEMP_REPO=$(mktemp -d)
-  
-  substep "Fetching latest commands from ai-native-sdlc repository..."
-  if git clone --depth 1 --filter=blob:none --sparse https://github.com/nandosb/ai-native-sdlc.git "$TEMP_REPO" 2>/dev/null; then
-    cd "$TEMP_REPO" || error "Failed to change to temp directory"
-    git sparse-checkout set claude-commands 2>/dev/null
-    
-    # Copy command files that don't exist locally
-    if [[ -d "$TEMP_REPO/claude-commands" ]]; then
-      files_synced=0
-      files_skipped=0
-      
-      for cmd_file in "$TEMP_REPO/claude-commands"/*.md; do
-        if [[ -f "$cmd_file" ]]; then
-          filename=$(basename "$cmd_file")
-          if [[ ! -f "$PROJECT_DIR/.claude/commands/$filename" ]]; then
-            cp "$cmd_file" "$PROJECT_DIR/.claude/commands/$filename"
-            ((files_synced++))
-          else
-            ((files_skipped++))
-          fi
-        fi
-      done
-      
-      cd "$PROJECT_DIR" || error "Failed to return to project directory"
-      rm -rf "$TEMP_REPO"
-      
-      if [[ $files_synced -gt 0 ]]; then
-        success "Synced $files_synced command file(s)"
-      fi
-      if [[ $files_skipped -gt 0 ]]; then
-        substep "Skipped $files_skipped existing file(s)"
-      fi
-    else
-      warn "claude-commands directory not found in repository"
-      rm -rf "$TEMP_REPO"
-    fi
-  else
-    warn "Failed to clone ai-native-sdlc repository"
-    rm -rf "$TEMP_REPO" 2>/dev/null || true
-  fi
-  
   # Run claude /init only if CLAUDE.md doesn't exist
   if [[ ! -f "$PROJECT_DIR/.claude/CLAUDE.md" ]]; then
-    substep "Running claude initialization..."
-    echo "" | claude init 2>/dev/null || true
-    echo "" | claude /init 2>/dev/null || true
+    echo ""
+    echo -e "${CYAN}${BOLD}Claude Project Initialization${NC}"
+    echo -e "${DIM}─────────────────────────────────────────────────────────────────${NC}"
+    echo ""
+    echo -e "${DIM}The script will now run the following Claude commands:${NC}"
+    echo -e "  ${CYAN}1.${NC} ${BOLD}claude init${NC} - Initialize Claude for this project"
+    echo -e "  ${CYAN}2.${NC} ${BOLD}claude /init${NC} - Generate CLAUDE.md file"
+    echo ""
+    echo -e "${YELLOW}${BOLD}Important:${NC}"
+    echo -e "${DIM}• These commands will open an interactive Claude shell${NC}"
+    echo -e "${DIM}• This is necessary for proper project initialization${NC}"
+    echo -e "${DIM}• After each command completes, you'll need to type ${NC}${BOLD}exit${NC}${DIM} to continue${NC}"
+    echo ""
     
-    # Move CLAUDE.md from root to .claude if it was created in root
-    if [[ -f "$PROJECT_DIR/CLAUDE.md" ]]; then
-      substep "Moving CLAUDE.md to .claude directory..."
-      mv "$PROJECT_DIR/CLAUDE.md" "$PROJECT_DIR/.claude/CLAUDE.md"
+    if ! confirm "Ready to proceed with Claude initialization?"; then
+      warn "Skipping Claude initialization"
+      SKIPPED_COMPONENTS+=("Claude project initialization (user declined)")
+    else
+      substep "Running claude initialization..."
+      echo "" | claude init 2>/dev/null || true
+      echo "" | claude /init 2>/dev/null || true
+      
+      # Move CLAUDE.md from root to .claude if it was created in root
+      if [[ -f "$PROJECT_DIR/CLAUDE.md" ]]; then
+        substep "Moving CLAUDE.md to .claude directory..."
+        mv "$PROJECT_DIR/CLAUDE.md" "$PROJECT_DIR/.claude/CLAUDE.md"
+      fi
     fi
   else
     substep "CLAUDE.md already exists, skipping initialization"
+  fi
+  
+  # Append security instructions from remote template if CLAUDE.md exists
+  if [[ -f "$PROJECT_DIR/.claude/CLAUDE.md" ]]; then
+    echo ""
+    substep "Checking CLAUDE.md for security instructions..."
+    
+    # Download the remote security.md template to a temporary file
+    TEMP_SECURITY=$(mktemp)
+    
+    if curl -fsSL https://raw.githubusercontent.com/nandosb/ai-native-sdlc/main/claude-templates/security.md -o "$TEMP_SECURITY" 2>/dev/null; then
+      # Get the first line from the downloaded template to use as an identifier
+      FIRST_LINE=$(head -n 1 "$TEMP_SECURITY")
+      
+      # Check if security instructions are already present in CLAUDE.md
+      if ! grep -qF "$FIRST_LINE" "$PROJECT_DIR/.claude/CLAUDE.md" 2>/dev/null; then
+        substep "Appending security instructions to CLAUDE.md..."
+        {
+          echo ""
+          cat "$TEMP_SECURITY"
+        } >> "$PROJECT_DIR/.claude/CLAUDE.md"
+        success "Security instructions appended to CLAUDE.md"
+        INSTALLED_COMPONENTS+=("CLAUDE.md security documentation")
+      else
+        substep "Security instructions already present in CLAUDE.md"
+      fi
+    else
+      warn "Failed to download security template for CLAUDE.md documentation"
+    fi
+    
+    # Clean up temporary file
+    rm -f "$TEMP_SECURITY" 2>/dev/null || true
   fi
   
   # Check if initialization created project files
