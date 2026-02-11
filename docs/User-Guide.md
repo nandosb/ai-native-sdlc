@@ -117,7 +117,11 @@ brew install jq  # macOS
 
 ### 1. Configurar el manifest
 
-Edita `manifest.yaml` para tu proyecto. Este archivo le dice al sistema qué repos usar y dónde está el PRD:
+Copia `manifest.example.yaml` a `manifest.yaml` y edítalo para tu proyecto. Este archivo le dice al sistema qué repos usar y dónde está el PRD:
+
+```bash
+cp manifest.example.yaml manifest.yaml
+```
 
 ```yaml
 prd: https://notion.so/tu-org/prd-mi-feature-abc123
@@ -166,7 +170,7 @@ claude
 O con un manifest específico:
 
 ```
-/sdlc-run manifest.yaml
+/sdlc-run
 ```
 
 El sistema comienza automáticamente con la fase **BOOTSTRAP**:
@@ -349,7 +353,7 @@ Sin problema. El sistema detecta que el MCP no está disponible y:
 
 ### "Quiero agregar un repo a mitad del run"
 
-Actualmente no se soporta. Termina el run actual, actualiza `manifest.yaml`, y empieza uno nuevo.
+Actualmente no se soporta. Termina el run actual, actualiza tu `manifest.yaml`, y empieza uno nuevo.
 
 ### "El PR necesita cambios que pidió un reviewer humano"
 
@@ -366,7 +370,8 @@ Actualmente no se soporta. Termina el run actual, actualiza `manifest.yaml`, y e
 ```
 # 1. Setup
 cd ~/go/src/yalochat/agentic-sdlc
-vim manifest.yaml                  # configurar repos y PRD
+cp manifest.example.yaml manifest.yaml  # copiar plantilla
+vim manifest.yaml                       # configurar repos y PRD
 claude                             # abrir Claude Code
 
 # 2. Ejecutar
@@ -418,7 +423,7 @@ agentic-sdlc/
 
 3. **CLAUDE.md en tus repos**: Si tus repos ya tienen `CLAUDE.md`, el sistema los usa directamente (no spawna doc-generator). Un buen CLAUDE.md mejora significativamente la calidad del código generado.
 
-4. **Linear teams**: Los teams en `manifest.yaml` deben coincidir exactamente con los nombres de teams en tu workspace de Linear.
+4. **Linear teams**: Los teams en tu `manifest.yaml` deben coincidir exactamente con los nombres de teams en tu workspace de Linear.
 
 5. **Métricas de costo**: Ejecuta `/sdlc-status` al final para ver cuántos tokens consumió cada agente y el costo estimado.
 

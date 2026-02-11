@@ -69,7 +69,7 @@ proyecto-orquestador/
   CLAUDE.md                        ← convenciones del orquestador
   state.json                       ← estado persistido del run actual
   metrics.jsonl                    ← tokens por invocación (Tier 2)
-  manifest.yaml                    ← configuración de repos y PRD
+  manifest.example.yaml            ← plantilla de configuración (copiar a manifest.yaml)
 ```
 
 ### 3.2 Cómo funciona
@@ -232,7 +232,7 @@ Estos no son slash commands — son skills de conocimiento que se inyectan al sy
 | **TypeScript** | `typescript-advanced-types`, `typescript-expert` | wshobson/agents, sickn33/antigravity-awesome-skills |
 | **Python** | `python-design-patterns`, `python-testing-patterns`, `python-project-structure` | wshobson/agents |
 
-Se instalan con `npx skills add <owner/repo>`. Overrideable por repo en `manifest.yaml`.
+Se instalan con `npx skills add <owner/repo>`. Overrideable por repo en el manifest.
 
 Para lenguajes sin skills en skills.sh: crear custom con `anthropics/skills/skill-creator`.
 
@@ -253,12 +253,12 @@ El usuario interactúa con el sistema via skills — archivos en `.claude/skills
 
 ### `/sdlc-run`
 
-Inicia un nuevo run. Lee `manifest.yaml`, ejecuta las fases.
+Inicia un nuevo run. Lee el manifest, ejecuta las fases.
 
 ```yaml
 ---
 name: sdlc-run
-description: Inicia el flujo de Agentic SDLC desde un manifest.yaml
+description: Inicia el flujo de Agentic SDLC desde un manifest
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 argument-hint: "[manifest.yaml]"
 ---
@@ -303,7 +303,7 @@ allowed-tools: Read, Write, Bash, Task
 ### Flujo típico
 
 ```
-usuario: /sdlc-run manifest.yaml
+usuario: /sdlc-run
 
 Claude: Leyendo manifest.yaml...
         Repos: api-gateway (Go), notification-worker (Go), shared-events (Go)
@@ -362,7 +362,7 @@ Claude: [spawna session-resumer]
 ### 6.1 Diagrama
 
 ```
-/sdlc-run manifest.yaml
+/sdlc-run
  │
  ▼
 BOOTSTRAP (automático)
@@ -692,7 +692,7 @@ Workspace
 
 ## 11. Soporte multi-repo
 
-### 11.1 manifest.yaml
+### 11.1 manifest.example.yaml
 
 ```yaml
 prd: https://notion.so/org/prd-webhook-notifications
@@ -718,7 +718,7 @@ repos:
 
 El orquestador (no un sub-agente) detecta el lenguaje directamente:
 
-1. Si `manifest.yaml` tiene `language` → usar ese
+1. Si el manifest tiene `language` → usar ese
 2. Si no → verificar presencia de archivos (Glob):
    - `go.mod` → Go
    - `package.json` → TypeScript/JavaScript

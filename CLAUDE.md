@@ -49,7 +49,7 @@ sdlc serve      — Start web UI on :3000
 
 - `state.json` — Current run state (phase, issues, artifacts, metrics)
 - `metrics.jsonl` — Per-agent token usage (appended per invocation)
-- `manifest.yaml` — Repo configuration and PRD reference
+- `manifest.example.yaml` — Example manifest (copy to `manifest.yaml` to configure)
 
 ## Build
 
