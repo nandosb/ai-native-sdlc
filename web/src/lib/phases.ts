@@ -10,5 +10,5 @@ const PHASE_ORDER: Record<string, number> = {
 export function phaseLabel(phase: string): string {
   const num = PHASE_ORDER[phase]
   const cap = phase.charAt(0).toUpperCase() + phase.slice(1)
-  return num ? `${num}- ${cap}` : cap
+  return num ? `${num} - ${cap}` : cap
 }
