@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/yalochat/agentic-sdlc/internal/claude"
 	"github.com/yalochat/agentic-sdlc/internal/engine"
+	"github.com/yalochat/agentic-sdlc/internal/integrations"
+	"github.com/yalochat/agentic-sdlc/internal/prompts"
 )
 
 // handleExecutions dispatches GET/POST for /api/executions.
@@ -168,7 +170,7 @@ func (s *Server) handleCreateExecution(w http.ResponseWriter, r *http.Request) {
 			CWD:          cwd,
 			Model:        "sonnet",
 			SessionID:    sessionID,
-			AllowedTools: toolsForPhase(req.Phase),
+			AllowedTools: toolsForPhase(req.Phase, req.Params, eng),
 		}
 
 		var bus *engine.EventBus
@@ -312,7 +314,7 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, execI
 			Model:        "sonnet",
 			SessionID:    exec.SessionID,
 			Resume:       true,
-			AllowedTools: toolsForPhase(exec.Phase),
+			AllowedTools: toolsForPhase(exec.Phase, exec.Params, eng),
 		}
 
 		var bus *engine.EventBus
@@ -382,7 +384,25 @@ func buildPrompt(phase string, params map[string]string, eng *engine.Engine) str
 		if prd == "" && eng != nil {
 			prd = eng.State.PrdURL
 		}
-		return "You are a solution designer. Analyze the PRD and produce a scoping document. PRD: " + prd
+		repoSummary := ""
+		if eng != nil {
+			repoSummary = buildRepoSummaryServer(eng.State.Repos)
+		}
+		notionURL := resolveNotionURLServer(prd, params)
+		if notionURL != "" {
+			notion := integrations.NewNotionClient()
+			if notion.IsConfigured() {
+				// Pre-fetch PRD content via Notion API
+				prdContent, err := notion.ReadPage(notionURL)
+				if err == nil {
+					return prompts.SolutionDesigner(prdContent, repoSummary)
+				}
+				log.Printf("[exec] failed to pre-fetch PRD from Notion: %v, falling back to MCP tools", err)
+			}
+			// Notion URL but no API key (or fetch failed) → let Claude use MCP tools
+			return prompts.SolutionDesignerFromNotion(notionURL, repoSummary)
+		}
+		return prompts.SolutionDesigner(prd, repoSummary)
 	case "planning":
 		doc := params["scoping_doc"]
 		if doc == "" && eng != nil {
@@ -408,9 +428,26 @@ func buildPrompt(phase string, params map[string]string, eng *engine.Engine) str
 }
 
 // toolsForPhase returns the AllowedTools list matching what the real phase runners use.
-func toolsForPhase(phase string) []string {
+func toolsForPhase(phase string, params map[string]string, eng *engine.Engine) []string {
 	base := []string{"Read", "Write", "Edit", "Glob", "Grep", "Bash"}
 	switch phase {
+	case "design":
+		prd := ""
+		if params != nil {
+			prd = params["prd"]
+		}
+		if prd == "" && eng != nil {
+			prd = eng.State.PrdURL
+		}
+		notionURL := resolveNotionURLServer(prd, params)
+		if notionURL != "" {
+			notion := integrations.NewNotionClient()
+			if !notion.IsConfigured() {
+				// No API key — need MCP tools to read Notion
+				return append(base, "mcp__plugin_Notion_notion__*")
+			}
+		}
+		return base
 	case "tracking":
 		// Tracking needs Linear MCP tools (create issues) and Notion MCP tools (read PERT)
 		return append(base, "mcp__plugin_linear_linear__*", "mcp__plugin_Notion_notion__*")
@@ -435,4 +472,32 @@ func resolveCWD(phase, issueID string, eng *engine.Engine) string {
 		return eng.State.Repos[0].Path
 	}
 	return "."
+}
+
+// isNotionURLServer returns true if the given string looks like a Notion URL.
+func isNotionURLServer(s string) bool {
+	return strings.Contains(s, "notion.so") || strings.Contains(s, "notion.site")
+}
+
+// resolveNotionURLServer checks params and prdURL for a Notion URL.
+func resolveNotionURLServer(prdURL string, params map[string]string) string {
+	if params != nil && params["prd"] != "" {
+		if isNotionURLServer(params["prd"]) {
+			return params["prd"]
+		}
+		return ""
+	}
+	if isNotionURLServer(prdURL) {
+		return prdURL
+	}
+	return ""
+}
+
+// buildRepoSummaryServer builds a text summary of configured repositories.
+func buildRepoSummaryServer(repos []engine.RepoConfig) string {
+	summary := "Repositories:\n"
+	for _, r := range repos {
+		summary += "- " + r.Name + " (" + r.Language + ") at " + r.Path + ", team: " + r.Team + "\n"
+	}
+	return summary
 }
