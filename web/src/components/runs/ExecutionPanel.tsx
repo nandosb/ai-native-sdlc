@@ -1,6 +1,7 @@
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { useExecution } from '../../hooks/useExecution'
 import { sendExecutionMessage, approveExecution, cancelExecution } from '../../lib/api'
+import { phaseLabel } from '../../lib/phases'
 import { ChatInterface } from './ChatInterface'
 import type { WSEvent } from '../../hooks/useWebSocket'
 
@@ -75,7 +76,7 @@ export function ExecutionPanel({ executionId, events }: Props) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold text-white capitalize">{execution.phase}</h3>
+          <h3 className="text-sm font-semibold text-white">{phaseLabel(execution.phase)}</h3>
           <span className={`text-xs px-2 py-0.5 rounded-full ${typeBadgeClass(execution.type)}`}>
             {execution.type}
           </span>

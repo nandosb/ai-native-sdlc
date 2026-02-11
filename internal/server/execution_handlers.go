@@ -386,13 +386,13 @@ func buildPrompt(phase string, params map[string]string, eng *engine.Engine) str
 
 // toolsForPhase returns the AllowedTools list matching what the real phase runners use.
 func toolsForPhase(phase string) []string {
+	base := []string{"Read", "Write", "Edit", "Glob", "Grep", "Bash"}
 	switch phase {
-	case "executing":
-		// Coder agent: full read/write access
-		return []string{"Read", "Write", "Edit", "Glob", "Grep", "Bash"}
+	case "tracking":
+		// Tracking needs Linear MCP tools (create issues) and Notion MCP tools (read PERT)
+		return append(base, "mcp__plugin_linear_linear__*", "mcp__plugin_Notion_notion__*")
 	default:
-		// Design, planning, tracking, bootstrap: read + write + bash
-		return []string{"Read", "Write", "Edit", "Glob", "Grep", "Bash"}
+		return base
 	}
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Play } from 'lucide-react'
 import { fetchIssues, type StatusResponse } from '../../lib/api'
+import { phaseLabel } from '../../lib/phases'
 
 interface Props {
   status: StatusResponse | null
@@ -78,7 +79,7 @@ export function NewExecutionForm({ status, onClose, onSubmit }: Props) {
               <option value="">Select a phase...</option>
               {PHASES.map((p) => (
                 <option key={p} value={p}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {phaseLabel(p)}
                 </option>
               ))}
             </select>

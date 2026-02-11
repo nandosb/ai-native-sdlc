@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { fetchRuns, selectRun, type RunSummary } from '../lib/api'
+import { phaseLabel } from '../lib/phases'
 import { ChevronDown } from 'lucide-react'
 
 interface RunSelectorProps {
@@ -62,7 +63,7 @@ export function RunSelector({ currentRunId, onRunSelected }: RunSelectorProps) {
             >
               <span className="font-mono">{run.id}</span>
               <span className="text-xs text-gray-500">
-                {run.phase} &middot; {run.issue_count} issues
+                {phaseLabel(run.phase)} &middot; {run.issue_count} issues
               </span>
             </button>
           ))}

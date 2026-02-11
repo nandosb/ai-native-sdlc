@@ -9,6 +9,7 @@ import {
 import type { WSEvent } from '../hooks/useWebSocket'
 import { useRuns } from '../hooks/useRuns'
 import { MetricsSummary } from './dashboard/MetricsSummary'
+import { phaseLabel } from '../lib/phases'
 import {
   CheckCircle2,
   Loader2,
@@ -105,7 +106,7 @@ export function Dashboard({ status, events }: Props) {
               >
                 <RunStatusIcon status={run.phase_status} />
                 <span className="font-mono text-xs text-gray-300 truncate">{run.id.slice(0, 12)}</span>
-                <span className="text-xs capitalize text-gray-400">{run.phase}</span>
+                <span className="text-xs text-gray-400">{phaseLabel(run.phase)}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${runStatusBadgeClass(run.phase_status)}`}>
                   {run.phase_status}
                 </span>
@@ -159,7 +160,7 @@ export function Dashboard({ status, events }: Props) {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">Phase</dt>
-                <dd className="capitalize text-gray-300">{status.phase}</dd>
+                <dd className="text-gray-300">{phaseLabel(status.phase)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">Status</dt>
@@ -327,9 +328,9 @@ function eventBadge(type: string) {
 function eventSummary(evt: WSEvent) {
   const d = evt.data
   switch (evt.type) {
-    case 'phase.started': return `Phase ${d?.phase} started`
-    case 'phase.completed': return `Phase ${d?.phase} completed`
-    case 'phase.gate': return `Approval gate: ${d?.phase}`
+    case 'phase.started': return `Phase ${phaseLabel(String(d?.phase ?? ''))} started`
+    case 'phase.completed': return `Phase ${phaseLabel(String(d?.phase ?? ''))} completed`
+    case 'phase.gate': return `Approval gate: ${phaseLabel(String(d?.phase ?? ''))}`
     case 'agent.spawned': return `${d?.agent} started${d?.issue ? ` (${d.issue})` : ''}`
     case 'agent.completed': return `${d?.agent} finished${d?.issue ? ` (${d.issue})` : ''}`
     case 'issue.status_changed': return `${d?.issue_id}: ${d?.status}`

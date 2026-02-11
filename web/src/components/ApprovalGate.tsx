@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { submitApproval } from '../lib/api'
+import { phaseLabel } from '../lib/phases'
 import { CheckCircle2, XCircle, FileText, X } from 'lucide-react'
 
 interface Props {
@@ -42,7 +43,7 @@ export function ApprovalGate({ phase, artifacts, phaseArtifactMap, onClose, onAp
           <div>
             <h2 className="text-lg font-semibold text-white">Approval Gate</h2>
             <p className="text-sm text-gray-400 mt-0.5">
-              Phase <span className="capitalize font-medium text-gray-300">{phase}</span> requires approval
+              Phase <span className="font-medium text-gray-300">{phaseLabel(phase)}</span> requires approval
             </p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300">

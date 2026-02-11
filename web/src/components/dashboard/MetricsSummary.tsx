@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchMetrics, type MetricsResponse } from '../../lib/api'
+import { phaseLabel } from '../../lib/phases'
 import { Coins, Zap, Clock, BarChart3, ChevronDown, ChevronRight } from 'lucide-react'
 
 export function MetricsSummary() {
@@ -122,7 +123,7 @@ export function MetricsSummary() {
                       const maxMs = Math.max(...Object.values(metrics.phase_timings))
                       return (
                         <div key={phase} className="flex items-center gap-3">
-                          <span className="text-sm text-gray-400 w-24 capitalize">{phase}</span>
+                          <span className="text-sm text-gray-400 w-28">{phaseLabel(phase)}</span>
                           <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-brand-500 rounded-full transition-all"

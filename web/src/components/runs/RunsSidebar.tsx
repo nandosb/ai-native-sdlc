@@ -15,6 +15,7 @@ import {
   type Execution,
   type ExecutionStatus,
 } from '../../lib/api'
+import { phaseLabel } from '../../lib/phases'
 
 interface Props {
   runs: RunSummary[]
@@ -225,7 +226,7 @@ function ExecutionItem({
       }`}
     >
       <StatusIcon size={12} className={statusColor(execution.status)} />
-      <span className="truncate capitalize">{label}</span>
+      <span className="truncate">{execution.type === 'issue' ? label : phaseLabel(label)}</span>
       <span className="text-[10px] text-gray-600 ml-auto flex-shrink-0">
         {execution.type === 'issue' ? 'issue' : 'phase'}
       </span>
