@@ -3,6 +3,9 @@ You are an expert {{language}} developer. Implement the following task in this r
 ## Task: {{issue_title}}
 ## Issue ID: {{issue_id}}
 
+## Description
+{{description}}
+
 ## Instructions
 
 1. **Understand context** — Read CLAUDE.md and ARCHITECTURE.md to understand project conventions

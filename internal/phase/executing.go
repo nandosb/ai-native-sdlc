@@ -115,13 +115,13 @@ func executeIssue(eng *engine.Engine, wm *gitops.WorktreeManager, issue engine.I
 		Data: map[string]string{"agent": "coder", "issue": issue.ID},
 	})
 
-	coderPrompt := prompts.Coder(issue.Title, issue.ID, repoConfig.Language)
+	coderPrompt := prompts.Coder(issue.Title, issue.ID, repoConfig.Language, "")
 	start := time.Now()
 	coderResult, err := claude.Run(context.Background(), claude.RunConfig{
 		Prompt:       coderPrompt,
 		CWD:          wtPath,
 		Model:        "sonnet",
-		AllowedTools: []string{"Read", "Write", "Edit", "Glob", "Grep", "Bash"},
+		AllowedTools: []string{"mcp__plugin_linear_linear__*", "Read", "Write", "Edit", "Glob", "Grep", "Bash"},
 	}, eng.Events, issue.ID)
 	elapsed := time.Since(start)
 

@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 )
 
 const linearAPIBase = "https://api.linear.app/graphql"
@@ -90,6 +92,86 @@ func (lc *LinearClient) CreateIssue(issue LinearIssue) (string, error) {
 	}
 
 	return resp.Data.IssueCreate.Issue.Identifier, nil
+}
+
+// LinearIssueDetails holds the fetched details of a Linear issue.
+type LinearIssueDetails struct {
+	Identifier  string
+	Title       string
+	Description string
+}
+
+// GetIssueByIdentifier fetches an issue's title and description by its
+// identifier (e.g. "IGN-63"). The identifier is split into team key and
+// issue number, then queried via GraphQL.
+func (lc *LinearClient) GetIssueByIdentifier(identifier string) (*LinearIssueDetails, error) {
+	if !lc.IsConfigured() {
+		return nil, fmt.Errorf("LINEAR_API_KEY not set")
+	}
+
+	// Split "TEAM-123" into team key and number
+	parts := strings.SplitN(identifier, "-", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid identifier format: %s", identifier)
+	}
+	teamKey := parts[0]
+	number, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid issue number in identifier %s: %w", identifier, err)
+	}
+
+	query := `query GetIssue($filter: IssueFilter) {
+		issues(filter: $filter, first: 1) {
+			nodes {
+				identifier
+				title
+				description
+			}
+		}
+	}`
+
+	filter := map[string]interface{}{
+		"number": map[string]interface{}{
+			"eq": number,
+		},
+		"team": map[string]interface{}{
+			"key": map[string]interface{}{
+				"eq": teamKey,
+			},
+		},
+	}
+
+	var resp struct {
+		Data struct {
+			Issues struct {
+				Nodes []struct {
+					Identifier  string `json:"identifier"`
+					Title       string `json:"title"`
+					Description string `json:"description"`
+				} `json:"nodes"`
+			} `json:"issues"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+
+	if err := lc.graphql(query, map[string]interface{}{"filter": filter}, &resp); err != nil {
+		return nil, err
+	}
+	if len(resp.Errors) > 0 {
+		return nil, fmt.Errorf("linear error: %s", resp.Errors[0].Message)
+	}
+	if len(resp.Data.Issues.Nodes) == 0 {
+		return nil, fmt.Errorf("issue not found: %s", identifier)
+	}
+
+	node := resp.Data.Issues.Nodes[0]
+	return &LinearIssueDetails{
+		Identifier:  node.Identifier,
+		Title:       node.Title,
+		Description: node.Description,
+	}, nil
 }
 
 // SearchIssueByTitle searches for an existing issue by title.

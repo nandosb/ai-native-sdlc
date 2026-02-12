@@ -133,20 +133,26 @@ Read the page and all its sub-pages/blocks to get the complete scoping document 
 }
 
 // Coder returns the prompt for implementing an issue.
-func Coder(issueTitle, issueID, language string) string {
+func Coder(issueTitle, issueID, language, description string) string {
 	tmpl := loadTemplate("coder.md")
 	if tmpl != "" {
 		return interpolate(tmpl, map[string]string{
 			"issue_title": issueTitle,
 			"issue_id":    issueID,
 			"language":    language,
+			"description": description,
 		})
+	}
+
+	descBlock := ""
+	if description != "" {
+		descBlock = "\n## Description\n" + description + "\n"
 	}
 
 	return fmt.Sprintf(`You are an expert %s developer. Implement the following task:
 
 ## Task: %s (ID: %s)
-
+%s
 ## Instructions
 
 1. Read the existing CLAUDE.md and ARCHITECTURE.md to understand project conventions
@@ -156,7 +162,20 @@ func Coder(issueTitle, issueID, language string) string {
 5. Commit your changes with a clear message referencing %s
 
 Follow existing code patterns and conventions. Write clean, well-tested code.
-Do not modify files outside the scope of this task.`, language, issueTitle, issueID, issueID)
+Do not modify files outside the scope of this task.`, language, issueTitle, issueID, descBlock, issueID)
+}
+
+// CoderFromLinear returns a prompt that instructs Claude to first fetch the
+// issue description from Linear via MCP tools, then proceed with implementation.
+func CoderFromLinear(issueTitle, issueID, linearID, language string) string {
+	preamble := fmt.Sprintf(`IMPORTANT: The full issue details are stored in Linear. Before doing anything else, use your Linear MCP tools to fetch the complete description of issue %s.
+
+Read the issue description and acceptance criteria, then proceed with the instructions below using that context.
+
+`, linearID)
+
+	base := Coder(issueTitle, issueID, language, "[Issue description fetched from Linear — see instructions above]")
+	return preamble + base
 }
 
 // QualityReviewer returns the prompt for reviewing code changes.

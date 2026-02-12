@@ -438,8 +438,51 @@ func buildPrompt(phase string, params map[string]string, eng *engine.Engine) str
 		team := params["team"]
 		return "Create Linear issues from the PERT document. PERT path: " + pert + " Team: " + team
 	case "executing":
-		issue := params["issue"]
-		return "Implement the following issue: " + issue
+		issueParam := params["issue"]
+		issueID, issueTitle := parseIssueParam(issueParam)
+		log.Printf("[prompt] executing: issueParam=%q → issueID=%q title=%q", issueParam, issueID, issueTitle)
+
+		// Determine language and LinearID from engine state
+		language := ""
+		linearID := ""
+		if eng != nil {
+			if iss, ok := eng.State.Issues[issueID]; ok {
+				linearID = iss.LinearID
+				log.Printf("[prompt] executing: found issue %s in state, linearID=%q", issueID, linearID)
+				// Find repo language
+				for _, r := range eng.State.Repos {
+					if r.Name == iss.Repo {
+						language = r.Language
+						break
+					}
+				}
+			}
+			if language == "" && len(eng.State.Repos) > 0 {
+				language = eng.State.Repos[0].Language
+			}
+		} else if eng != nil {
+			log.Printf("[prompt] executing: issue %q NOT found in state (have %d issues, keys: %v)", issueID, len(eng.State.Issues), issueKeys(eng))
+		}
+
+		// Try to pre-fetch issue description from Linear API
+		if linearID != "" {
+			linear := integrations.NewLinearClient()
+			if linear.IsConfigured() {
+				details, err := linear.GetIssueByIdentifier(linearID)
+				if err == nil && details.Description != "" {
+					log.Printf("[exec] pre-fetched Linear issue %s description (%d bytes)", linearID, len(details.Description))
+					return prompts.Coder(issueTitle, issueID, language, details.Description)
+				}
+				if err != nil {
+					log.Printf("[exec] failed to pre-fetch Linear issue %s: %v, falling back to MCP", linearID, err)
+				}
+			}
+			// API key missing or fetch failed — instruct Claude to fetch via MCP tools
+			return prompts.CoderFromLinear(issueTitle, issueID, linearID, language)
+		}
+
+		// No LinearID available
+		return prompts.Coder(issueTitle, issueID, language, "")
 	case "bootstrap":
 		repo := params["repo"]
 		return "Bootstrap the repository by generating CLAUDE.md and ARCHITECTURE.md. Repo: " + repo
@@ -487,6 +530,9 @@ func toolsForPhase(phase string, params map[string]string, eng *engine.Engine) [
 	case "tracking":
 		// Tracking needs Linear MCP tools (create issues) and Notion MCP tools (read PERT)
 		return append(base, "mcp__plugin_linear_linear__*", "mcp__plugin_Notion_notion__*")
+	case "executing":
+		// Always grant Linear MCP tools for executing phase (matches CLI behavior)
+		return append(base, "mcp__plugin_linear_linear__*")
 	default:
 		return base
 	}
@@ -527,6 +573,25 @@ func resolveNotionURLServer(prdURL string, params map[string]string) string {
 		return prdURL
 	}
 	return ""
+}
+
+// issueKeys returns the keys of eng.State.Issues for debugging.
+func issueKeys(eng *engine.Engine) []string {
+	keys := make([]string, 0, len(eng.State.Issues))
+	for k := range eng.State.Issues {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// parseIssueParam splits "TASK-001: Some title" into (id, title).
+// If no colon separator is found, the whole string is treated as the ID.
+func parseIssueParam(s string) (id, title string) {
+	s = strings.TrimSpace(s)
+	if idx := strings.Index(s, ": "); idx >= 0 {
+		return s[:idx], s[idx+2:]
+	}
+	return s, s
 }
 
 // buildRepoSummaryServer builds a text summary of configured repositories.
