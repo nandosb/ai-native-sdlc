@@ -218,6 +218,20 @@ func executeIssue(eng *engine.Engine, wm *gitops.WorktreeManager, issue engine.I
 		})
 	}
 
+	// Safety net: commit any uncommitted changes the coder agent left behind
+	if commitErr := gitops.CommitAll(wtPath, "feat: implement "+issue.ID); commitErr != nil {
+		fmt.Printf("  [%s] Warning: commit-all: %v\n", issue.ID, commitErr)
+	}
+
+	// Verify the branch has commits before pushing/creating PR
+	hasCommits, commitCheckErr := gitops.HasCommitsAhead(wtPath)
+	if commitCheckErr != nil {
+		return fmt.Errorf("commit check: %w", commitCheckErr)
+	}
+	if !hasCommits {
+		return fmt.Errorf("no commits on branch — the coder agent did not produce any changes")
+	}
+
 	// Push branch and create PR
 	fmt.Printf("  [%s] Pushing branch and creating PR...\n", issue.ID)
 	if err := gitops.PushBranch(wtPath); err != nil {

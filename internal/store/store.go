@@ -46,6 +46,7 @@ type Store interface {
 	UpdateExecutionTokens(id string, tokensIn, tokensOut int64) error
 	ListExecutions(runID string) ([]engine.ExecutionRecord, error)
 	LatestExecution(runID string, phase string) (*engine.ExecutionRecord, error)
+	DeleteExecution(id string) error
 
 	// Migration helper
 	ImportState(state *engine.State) error

@@ -287,6 +287,17 @@ func (em *ExecutionManager) Cancel(id string) error {
 	return nil
 }
 
+// Remove cancels a running execution (if active) and removes it from memory.
+func (em *ExecutionManager) Remove(id string) {
+	em.mu.Lock()
+	defer em.mu.Unlock()
+	if fn, ok := em.cancel[id]; ok && fn != nil {
+		fn()
+	}
+	delete(em.executions, id)
+	delete(em.cancel, id)
+}
+
 // evictOldest removes the oldest completed executions when over the limit.
 // Must be called with mu held.
 func (em *ExecutionManager) evictOldest() {

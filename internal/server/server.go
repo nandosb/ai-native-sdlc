@@ -81,6 +81,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/manifest", s.handleManifest)
 	s.mux.HandleFunc("/api/runs", s.handleRuns)
 	s.mux.HandleFunc("/api/runs/select", s.handleSelectRun)
+	s.mux.HandleFunc("/api/runs/", s.handleRunAction)
 	s.mux.HandleFunc("/api/init", s.handleInit)
 	s.mux.HandleFunc("/api/phases/", s.handleRunPhase)
 	s.mux.HandleFunc("/api/run", s.handleRunAll)

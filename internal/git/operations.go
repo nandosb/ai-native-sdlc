@@ -84,6 +84,18 @@ func CommitAll(worktreePath, message string) error {
 	return nil
 }
 
+// HasCommitsAhead returns true if the current branch has commits ahead of origin/main.
+func HasCommitsAhead(worktreePath string) (bool, error) {
+	cmd := exec.Command("git", "rev-list", "--count", "origin/main..HEAD")
+	cmd.Dir = worktreePath
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("rev-list: %w", err)
+	}
+	count := strings.TrimSpace(string(output))
+	return count != "0", nil
+}
+
 // PRExists checks if a PR already exists for the given branch.
 func PRExists(worktreePath string) (string, bool) {
 	cmd := exec.Command("gh", "pr", "view", "--json", "url", "--jq", ".url")

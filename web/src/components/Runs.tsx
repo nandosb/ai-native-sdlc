@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Play, Plus, Loader2 } from 'lucide-react'
-import { createExecution, type StatusResponse } from '../lib/api'
+import { createExecution, deleteExecution, deleteRun, type StatusResponse } from '../lib/api'
 import type { WSEvent } from '../hooks/useWebSocket'
 import { useRuns } from '../hooks/useRuns'
 import { RunsSidebar } from './runs/RunsSidebar'
@@ -45,6 +45,29 @@ export function Runs({ status, events }: Props) {
     }
   }
 
+  const handleDeleteRun = async (runId: string) => {
+    try {
+      await deleteRun(runId)
+      refreshRuns()
+      setExecRefreshKey((k) => k + 1)
+    } catch (err) {
+      console.error('Failed to delete run:', err)
+    }
+  }
+
+  const handleDeleteExecution = async (execId: string) => {
+    try {
+      await deleteExecution(execId)
+      if (selectedId === execId) {
+        setSelectedId(null)
+      }
+      refreshRuns()
+      setExecRefreshKey((k) => k + 1)
+    } catch (err) {
+      console.error('Failed to delete execution:', err)
+    }
+  }
+
   return (
     <>
       <div className="flex h-[calc(100vh-8rem)] gap-4">
@@ -68,6 +91,8 @@ export function Runs({ status, events }: Props) {
               activeRunId={status?.run_id ?? null}
               selectedExecutionId={selectedId}
               onSelectExecution={setSelectedId}
+              onDeleteRun={handleDeleteRun}
+              onDeleteExecution={handleDeleteExecution}
               refreshKey={execRefreshKey}
             />
           </div>

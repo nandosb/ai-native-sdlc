@@ -331,6 +331,39 @@ func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, runs)
 }
 
+func (s *Server) handleRunAction(w http.ResponseWriter, r *http.Request) {
+	// Route /api/runs/{id} — only DELETE is supported on individual runs.
+	runID := strings.TrimPrefix(r.URL.Path, "/api/runs/")
+	if runID == "" || runID == "select" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s.handleDeleteRun(w, r, runID)
+}
+
+func (s *Server) handleDeleteRun(w http.ResponseWriter, _ *http.Request, runID string) {
+	s.mu.Lock()
+	if s.activeRunID == runID {
+		s.mu.Unlock()
+		http.Error(w, "cannot delete the active run", http.StatusConflict)
+		return
+	}
+	delete(s.engines, runID)
+	s.mu.Unlock()
+
+	if s.store != nil {
+		if err := s.store.DeleteRun(runID); err != nil {
+			http.Error(w, "failed to delete run: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	writeJSON(w, map[string]string{"status": "deleted"})
+}
+
 func (s *Server) handleSelectRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

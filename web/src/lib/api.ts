@@ -326,3 +326,25 @@ export async function cancelExecution(id: string): Promise<{ status: string }> {
   }
   return res.json()
 }
+
+export async function deleteExecution(id: string): Promise<{ status: string }> {
+  const res = await fetch(`${BASE}/api/executions/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text)
+  }
+  return res.json()
+}
+
+export async function deleteRun(runId: string): Promise<{ status: string }> {
+  const res = await fetch(`${BASE}/api/runs/${encodeURIComponent(runId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text)
+  }
+  return res.json()
+}

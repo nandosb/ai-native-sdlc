@@ -47,6 +47,8 @@ func (s *Server) handleExecAction(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case action == "" && r.Method == http.MethodGet:
 		s.handleGetExecution(w, r, execID)
+	case action == "" && r.Method == http.MethodDelete:
+		s.handleDeleteExecution(w, r, execID)
 	case action == "message" && r.Method == http.MethodPost:
 		s.handleSendMessage(w, r, execID)
 	case action == "approve" && r.Method == http.MethodPost:
@@ -251,7 +253,19 @@ func (s *Server) handleCreateExecution(w http.ResponseWriter, r *http.Request) {
 				log.Printf("[exec] %s: commit-all: %v", executionID, commitErr)
 			}
 
-			if pushErr := gitops.PushBranch(cwd); pushErr != nil {
+			// Verify the branch actually has commits before pushing/creating PR
+			hasCommits, commitCheckErr := gitops.HasCommitsAhead(cwd)
+			if commitCheckErr != nil {
+				log.Printf("[exec] %s: commit check failed: %v", executionID, commitCheckErr)
+			}
+
+			if !hasCommits {
+				log.Printf("[exec] %s: no commits on branch, skipping push/PR", executionID)
+				s.execMgr.AppendMessage(executionID, engine.Message{
+					Role:    "system",
+					Content: "Warning: no commits were produced. The coder agent may not have completed implementation. Please review and retry.",
+				})
+			} else if pushErr := gitops.PushBranch(cwd); pushErr != nil {
 				log.Printf("[exec] %s: push branch failed: %v", executionID, pushErr)
 				s.execMgr.AppendMessage(executionID, engine.Message{
 					Role:    "system",
@@ -464,6 +478,17 @@ func (s *Server) handleCancelExecution(w http.ResponseWriter, _ *http.Request, e
 		s.store.UpdateExecutionStatus(execID, engine.ExecCancelled, "")
 	}
 	writeJSON(w, map[string]string{"status": "cancelled"})
+}
+
+func (s *Server) handleDeleteExecution(w http.ResponseWriter, _ *http.Request, execID string) {
+	s.execMgr.Remove(execID)
+	if s.store != nil {
+		if err := s.store.DeleteExecution(execID); err != nil {
+			http.Error(w, "failed to delete execution: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	writeJSON(w, map[string]string{"status": "deleted"})
 }
 
 // buildPrompt constructs an initial prompt for a phase execution.

@@ -462,6 +462,11 @@ func (s *SQLiteStore) LatestExecution(runID string, phase string) (*engine.Execu
 	return &rec, nil
 }
 
+func (s *SQLiteStore) DeleteExecution(id string) error {
+	_, err := s.db.Exec(`DELETE FROM executions WHERE id = ?`, id)
+	return err
+}
+
 // ---------- Import ----------
 
 func (s *SQLiteStore) ImportState(state *engine.State) error {

@@ -8,6 +8,7 @@ import {
   XCircle,
   MessageSquare,
   Circle,
+  Trash2,
 } from 'lucide-react'
 import {
   fetchExecutions,
@@ -22,10 +23,12 @@ interface Props {
   activeRunId: string | null
   selectedExecutionId: string | null
   onSelectExecution: (id: string) => void
+  onDeleteRun?: (runId: string) => void
+  onDeleteExecution?: (execId: string) => void
   refreshKey?: number
 }
 
-export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectExecution, refreshKey }: Props) {
+export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectExecution, onDeleteRun, onDeleteExecution, refreshKey }: Props) {
   // Track which runs are expanded
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set())
   // Cache executions per run
@@ -121,32 +124,42 @@ export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectEx
           parents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
           return (
-            <div key={run.id}>
+            <div key={run.id} className="group/run">
               {/* Run header */}
-              <button
-                onClick={() => toggleRun(run.id)}
-                className={`w-full text-left px-2 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
-                  isActive
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                }`}
-              >
-                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                <RunStatusDot status={run.phase_status} />
-                <span className="truncate font-mono text-xs">
-                  {run.id.slice(0, 12)}
-                </span>
-                {isActive && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 ml-auto flex-shrink-0">
-                    active
+              <div className="flex items-center">
+                <button
+                  onClick={() => toggleRun(run.id)}
+                  className={`flex-1 min-w-0 text-left px-2 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
+                    isActive
+                      ? 'bg-gray-800 text-white'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                  }`}
+                >
+                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <RunStatusDot status={run.phase_status} />
+                  <span className="truncate font-mono text-xs">
+                    {run.id.slice(0, 12)}
                   </span>
+                  {isActive && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 ml-auto flex-shrink-0">
+                      active
+                    </span>
+                  )}
+                  {!isActive && (
+                    <span className="text-[10px] text-gray-600 ml-auto flex-shrink-0">
+                      {run.issue_count} issues
+                    </span>
+                  )}
+                </button>
+                {!isActive && onDeleteRun && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteRun(run.id) }}
+                    className="opacity-0 group-hover/run:opacity-100 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all flex-shrink-0"
+                  >
+                    <Trash2 size={12} />
+                  </button>
                 )}
-                {!isActive && (
-                  <span className="text-[10px] text-gray-600 ml-auto flex-shrink-0">
-                    {run.issue_count} issues
-                  </span>
-                )}
-              </button>
+              </div>
 
               {/* Executions under this run */}
               {isExpanded && (
@@ -168,6 +181,7 @@ export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectEx
                           execution={exec}
                           isSelected={selectedExecutionId === exec.id}
                           onSelect={onSelectExecution}
+                          onDelete={onDeleteExecution}
                           isChild={false}
                         />
                         {children.map((child) => (
@@ -176,6 +190,7 @@ export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectEx
                             execution={child}
                             isSelected={selectedExecutionId === child.id}
                             onSelect={onSelectExecution}
+                            onDelete={onDeleteExecution}
                             isChild={true}
                           />
                         ))}
@@ -209,11 +224,13 @@ function ExecutionItem({
   execution,
   isSelected,
   onSelect,
+  onDelete,
   isChild,
 }: {
   execution: Execution
   isSelected: boolean
   onSelect: (id: string) => void
+  onDelete?: (id: string) => void
   isChild: boolean
 }) {
   const StatusIcon = statusIcon(execution.status)
@@ -223,22 +240,30 @@ function ExecutionItem({
       : execution.phase
 
   return (
-    <button
-      onClick={() => onSelect(execution.id)}
-      className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center gap-2 transition-colors ${
-        isChild ? 'ml-3' : ''
-      } ${
-        isSelected
-          ? 'bg-gray-700 text-white'
-          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-      }`}
-    >
-      <StatusIcon size={12} className={statusColor(execution.status)} />
-      <span className="truncate">{execution.type === 'issue' ? label : phaseLabel(label)}</span>
-      <span className="text-[10px] text-gray-600 ml-auto flex-shrink-0">
-        {execution.type === 'issue' ? 'issue' : 'phase'}
-      </span>
-    </button>
+    <div className={`group/exec flex items-center ${isChild ? 'ml-3' : ''}`}>
+      <button
+        onClick={() => onSelect(execution.id)}
+        className={`flex-1 min-w-0 text-left px-2 py-1.5 rounded-md text-xs flex items-center gap-2 transition-colors ${
+          isSelected
+            ? 'bg-gray-700 text-white'
+            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+        }`}
+      >
+        <StatusIcon size={12} className={statusColor(execution.status)} />
+        <span className="truncate">{execution.type === 'issue' ? label : phaseLabel(label)}</span>
+        <span className="text-[10px] text-gray-600 ml-auto flex-shrink-0">
+          {execution.type === 'issue' ? 'issue' : 'phase'}
+        </span>
+      </button>
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(execution.id) }}
+          className="opacity-0 group-hover/exec:opacity-100 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all flex-shrink-0"
+        >
+          <Trash2 size={10} />
+        </button>
+      )}
+    </div>
   )
 }
 
