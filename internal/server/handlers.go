@@ -11,6 +11,7 @@ import (
 
 	"github.com/yalochat/agentic-sdlc/internal/engine"
 	"github.com/yalochat/agentic-sdlc/internal/phase"
+	"github.com/yalochat/agentic-sdlc/internal/store"
 	"gopkg.in/yaml.v3"
 )
 
@@ -287,18 +288,45 @@ func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if s.store == nil {
-		writeJSON(w, []interface{}{})
-		return
+
+	var runs []store.RunSummary
+
+	if s.store != nil {
+		var err error
+		runs, err = s.store.ListRuns()
+		if err != nil {
+			http.Error(w, "failed to list runs: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
-	runs, err := s.store.ListRuns()
-	if err != nil {
-		http.Error(w, "failed to list runs: "+err.Error(), http.StatusInternalServerError)
-		return
+
+	// Include the active engine's run if it's not already in the DB results.
+	// This handles the case where the server starts with an empty DB and the
+	// placeholder engine (RunID="empty") hasn't been persisted yet.
+	eng := s.activeEngine()
+	if eng != nil {
+		found := false
+		for _, r := range runs {
+			if r.ID == eng.State.RunID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			runs = append([]store.RunSummary{{
+				ID:        eng.State.RunID,
+				Phase:     string(eng.State.Phase),
+				Status:    string(eng.State.PhaseStatus),
+				PrdURL:    eng.State.PrdURL,
+				IssueCount: len(eng.State.Issues),
+				CreatedAt: eng.State.UpdatedAt,
+				UpdatedAt: eng.State.UpdatedAt,
+			}}, runs...)
+		}
 	}
+
 	if runs == nil {
-		writeJSON(w, []struct{}{})
-		return
+		runs = []store.RunSummary{}
 	}
 	writeJSON(w, runs)
 }

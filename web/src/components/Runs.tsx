@@ -18,6 +18,7 @@ export function Runs({ status, events }: Props) {
     return localStorage.getItem('sdlc:selectedExecutionId')
   })
   const [showNewForm, setShowNewForm] = useState(false)
+  const [execRefreshKey, setExecRefreshKey] = useState(0)
 
   // Persist selected execution ID to localStorage
   useEffect(() => {
@@ -38,6 +39,7 @@ export function Runs({ status, events }: Props) {
       setShowNewForm(false)
       setSelectedId(result.id)
       refreshRuns()
+      setExecRefreshKey((k) => k + 1)
     } catch (err) {
       console.error('Failed to create execution:', err)
     }
@@ -66,6 +68,7 @@ export function Runs({ status, events }: Props) {
               activeRunId={status?.run_id ?? null}
               selectedExecutionId={selectedId}
               onSelectExecution={setSelectedId}
+              refreshKey={execRefreshKey}
             />
           </div>
         </div>

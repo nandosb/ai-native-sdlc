@@ -22,9 +22,10 @@ interface Props {
   activeRunId: string | null
   selectedExecutionId: string | null
   onSelectExecution: (id: string) => void
+  refreshKey?: number
 }
 
-export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectExecution }: Props) {
+export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectExecution, refreshKey }: Props) {
   // Track which runs are expanded
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set())
   // Cache executions per run
@@ -49,6 +50,13 @@ export function RunsSidebar({ runs, activeRunId, selectedExecutionId, onSelectEx
       return next
     })
   }, [])
+
+  // Invalidate execution cache when refreshKey changes (e.g., after creating a new execution)
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      setExecutionsByRun({})
+    }
+  }, [refreshKey])
 
   // Fetch executions when a run is expanded
   useEffect(() => {

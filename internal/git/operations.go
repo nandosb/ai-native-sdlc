@@ -62,6 +62,28 @@ func HasChanges(worktreePath string) (bool, error) {
 	return len(strings.TrimSpace(string(output))) > 0, nil
 }
 
+// CommitAll stages and commits all changes if there are any uncommitted files.
+// This is a safety net in case the Claude session didn't commit its work.
+func CommitAll(worktreePath, message string) error {
+	hasChanges, err := HasChanges(worktreePath)
+	if err != nil || !hasChanges {
+		return err
+	}
+
+	add := exec.Command("git", "add", "-A")
+	add.Dir = worktreePath
+	if out, err := add.CombinedOutput(); err != nil {
+		return fmt.Errorf("git add: %s", strings.TrimSpace(string(out)))
+	}
+
+	commit := exec.Command("git", "commit", "-m", message)
+	commit.Dir = worktreePath
+	if out, err := commit.CombinedOutput(); err != nil {
+		return fmt.Errorf("git commit: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // PRExists checks if a PR already exists for the given branch.
 func PRExists(worktreePath string) (string, bool) {
 	cmd := exec.Command("gh", "pr", "view", "--json", "url", "--jq", ".url")

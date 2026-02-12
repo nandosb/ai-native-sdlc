@@ -26,9 +26,15 @@ func (wm *WorktreeManager) Create(repoPath, issueSlug string) (string, error) {
 	repoName := filepath.Base(repoPath)
 	wtPath := filepath.Join(wm.rootDir, worktreeBase, repoName, issueSlug)
 
-	// Check if worktree already exists
+	// Check if worktree already exists and is valid
 	if _, err := os.Stat(wtPath); err == nil {
-		return wtPath, nil
+		// Verify it's a real git worktree (has .git file)
+		if _, err := os.Stat(filepath.Join(wtPath, ".git")); err == nil {
+			absWT, _ := filepath.Abs(wtPath)
+			return absWT, nil
+		}
+		// Directory exists but isn't a valid worktree — remove orphaned dir
+		os.RemoveAll(wtPath)
 	}
 
 	// Ensure parent directory exists
@@ -43,6 +49,10 @@ func (wm *WorktreeManager) Create(repoPath, issueSlug string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve repo path: %w", err)
 	}
+
+	// Prune stale worktree entries (cleans up orphaned metadata)
+	prune := exec.Command("git", "-C", absRepo, "worktree", "prune")
+	prune.Run()
 
 	// Fetch latest
 	fetch := exec.Command("git", "-C", absRepo, "fetch", "origin", "main")

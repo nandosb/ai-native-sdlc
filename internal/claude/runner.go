@@ -310,17 +310,32 @@ func RunSession(
 	if err := cmd.Wait(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
+			// Detect signal-based kills (SIGKILL = -1 exit code on darwin, 137 on linux)
+			if result.ExitCode == -1 || result.ExitCode == 137 {
+				msg := fmt.Sprintf("Claude process was killed (exit code %d). Likely OOM — consider reducing task scope or using --max-turns.", result.ExitCode)
+				if execMgr != nil {
+					execMgr.AppendMessage(execID, engine.Message{
+						Role: "system", Content: msg,
+					})
+				}
+			}
 		} else {
 			return nil, fmt.Errorf("wait claude session: %w", err)
 		}
 	}
 
-	// If no text was produced but stderr has content, report it
-	if textAccum.Len() == 0 && stderrBuf.Len() > 0 && execMgr != nil {
-		execMgr.AppendMessage(execID, engine.Message{
-			Role:    "system",
-			Content: "stderr: " + stderrBuf.String(),
-		})
+	// Report stderr for diagnostics (truncate if very large)
+	stderrStr := stderrBuf.String()
+	if stderrStr != "" && execMgr != nil {
+		if len(stderrStr) > 2000 {
+			stderrStr = stderrStr[:2000] + "... (truncated)"
+		}
+		if textAccum.Len() == 0 || result.ExitCode != 0 {
+			execMgr.AppendMessage(execID, engine.Message{
+				Role:    "system",
+				Content: "stderr: " + stderrStr,
+			})
+		}
 	}
 
 	if execMgr != nil {
