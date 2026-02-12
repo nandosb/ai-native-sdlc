@@ -1,12 +1,26 @@
-# SQLite database
-sdlc
-sdlc.db
-sdlc.db-wal
-sdlc.db-journal
+# Runtime state
+.sdlc/
 
 # Environment
 .env
-manifest.yaml
 
-# OS files
+# OS
 .DS_Store
+
+# Personal overrides
+.claude/settings.local.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Editor vaults
+.obsidian/
+
+# Node (legacy)
+node_modules/
+
+# Go binary (legacy)
+/sdlc

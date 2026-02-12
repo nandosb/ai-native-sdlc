@@ -1,18 +1,16 @@
-# Guía de Usuario — Agentic SDLC
+# Guia de Usuario — Agentic SDLC
 
-## ¿Qué es Agentic SDLC?
+## Que es Agentic SDLC?
 
-Es una extensión de **Claude Code** que automatiza el ciclo de desarrollo de software. Le das un PRD (Product Requirements Document) y la configuración de tus repos, y el sistema:
+Es una extension de **Claude Code** que automatiza el ciclo de desarrollo de software. Le das un PRD (Product Requirements Document) y la configuracion de tus repos, y el sistema:
 
-1. Prepara los repos (genera CLAUDE.md si falta)
-2. Diseña la solución técnica (Scoping Doc)
+1. Prepara los repos (genera CLAUDE.md + ARCHITECTURE.md si faltan)
+2. Disena la solucion tecnica (Scoping Doc)
 3. Descompone en tareas con dependencias (PERT)
 4. Crea issues en Linear
-5. Implementa cada tarea (código + tests + PR)
-6. Revisa cada PR automáticamente
-7. Te pide review humano antes de mergear
-
-Tú mantienes el control en dos puntos clave: apruebas el diseño y apruebas el plan de tareas antes de que se ejecuten.
+5. Implementa cada tarea (codigo + tests + PR)
+6. Revisa cada PR automaticamente (max 3 iteraciones)
+7. Te pide review humano antes de continuar
 
 ---
 
@@ -21,7 +19,6 @@ Tú mantienes el control en dos puntos clave: apruebas el diseño y apruebas el 
 ### 1. Claude Code instalado
 
 ```bash
-# Verificar instalación
 claude --version
 ```
 
@@ -33,21 +30,19 @@ Si no lo tienes: https://docs.anthropic.com/en/docs/claude-code
 gh auth status
 ```
 
-Los agentes usan `gh` para crear PRs y leer reviews. Necesita acceso a los repos donde vas a trabajar.
+Los agentes usan `gh` para crear PRs y leer reviews.
 
 ### 3. MCP Servers configurados
 
-El sistema usa dos MCP servers opcionales:
+| MCP | Para que | Obligatorio? |
+|-----|----------|--------------|
+| **Linear** | Crear issues, gestionar estado | Si (para fase track y execute) |
+| **Notion** | Leer PRD desde Notion | No (puedes usar un archivo local) |
 
-| MCP | Para qué | ¿Obligatorio? |
-|-----|----------|----------------|
-| **Linear** | Crear issues, gestionar estado | Sí (para fases TRACKING y EXECUTING) |
-| **Notion** | Leer PRD, guardar artefactos | No (hay fallback a archivos locales) |
-
-Configúralos en tu Claude Code global o en el proyecto:
+Configuralos en tu Claude Code:
 
 ```json
-// ~/.claude/settings.json o .claude/settings.json
+// ~/.claude/settings.json
 {
   "mcpServers": {
     "linear": {
@@ -66,16 +61,15 @@ Configúralos en tu Claude Code global o en el proyecto:
 
 ### 4. Repos accesibles localmente
 
-Los repos que quieras procesar deben estar clonados en tu máquina. El sistema accede a ellos por path relativo o absoluto.
+Los repos que quieras procesar deben estar clonados en tu maquina.
 
 ---
 
-## Setup inicial (una sola vez)
+## Setup inicial
 
 ### Paso 1: Clonar el orquestador
 
 ```bash
-cd ~/go/src/yalochat   # o donde mantengas tus proyectos
 git clone git@github.com:yalochat/agentic-sdlc.git
 cd agentic-sdlc
 ```
@@ -84,349 +78,206 @@ cd agentic-sdlc
 
 ```bash
 ls .claude/skills/
-# Deberías ver: sdlc-approve/  sdlc-resume/  sdlc-run/  sdlc-status/
+# sdlc/  sdlc-bootstrap/  sdlc-design/  sdlc-execute/
+# sdlc-init/  sdlc-plan/  sdlc-status/  sdlc-track/
 
 ls .claude/agents/
-# Deberías ver: coder.md  doc-generator.md  feedback-writer.md
-#               quality-reviewer.md  session-resumer.md
-#               solution-designer.md  task-decomposer.md
-```
-
-### Paso 3: Verificar el hook de métricas
-
-```bash
-ls -la .claude/hooks/track-agent-metrics.sh
-# Debe tener permiso de ejecución (-rwxr-xr-x)
-
-# Si no lo tiene:
-chmod +x .claude/hooks/track-agent-metrics.sh
-```
-
-### Paso 4: Verificar que `jq` está instalado (para métricas)
-
-```bash
-jq --version
-
-# Si no lo tienes:
-brew install jq  # macOS
+# coder/  doc-generator/  linear-issue-creator/
+# quality-reviewer/  solution-designer/  task-decomposer/
 ```
 
 ---
 
 ## Uso: paso a paso
 
-### 1. Configurar el manifest
-
-Copia `manifest.example.yaml` a `manifest.yaml` y edítalo para tu proyecto. Este archivo le dice al sistema qué repos usar y dónde está el PRD:
+### 1. Abrir Claude Code en el directorio del orquestador
 
 ```bash
-cp manifest.example.yaml manifest.yaml
-```
-
-```yaml
-prd: https://notion.so/tu-org/prd-mi-feature-abc123
-
-repos:
-  - name: api-gateway
-    path: ../api-gateway          # path relativo desde agentic-sdlc/
-    team: Backend                 # nombre del team en Linear
-    language: go                  # opcional, se autodetecta
-
-  - name: notification-worker
-    path: ../notification-worker
-    team: Backend
-    # language se autodetecta por go.mod
-
-  - name: shared-events
-    path: ../shared-events
-    team: Platform
-```
-
-**Campos por repo:**
-
-| Campo | Requerido | Descripción |
-|-------|-----------|-------------|
-| `name` | Sí | Nombre corto (usado en Linear y state.json) |
-| `path` | Sí | Path al repo (relativo o absoluto) |
-| `team` | Sí | Team de Linear donde crear los issues |
-| `language` | No | `go`, `typescript`, `python`. Si no se pone, se detecta por `go.mod`/`package.json`/`pyproject.toml` |
-| `skills` | No | Skills adicionales para inyectar al coder de este repo |
-
-### 2. Abrir Claude Code en el directorio del orquestador
-
-```bash
-cd *AGENTIC-PATH*/agentic-sdlc
+cd agentic-sdlc
 claude
 ```
 
-> **Importante**: Siempre abre Claude Code desde el directorio `agentic-sdlc/`, no desde los repos individuales. El orquestador vive aquí.
+> **Importante**: Siempre abre Claude Code desde el directorio `agentic-sdlc/`, no desde los repos individuales.
 
-### 3. Iniciar el run
-
-```
-/sdlc-run
-```
-
-O con un manifest específico:
+### 2. Pipeline completo
 
 ```
-/sdlc-run
+/sdlc
 ```
 
-El sistema comienza automáticamente con la fase **BOOTSTRAP**:
+Esto ejecuta todas las fases en orden, resumiendo desde el ultimo checkpoint si ya hay estado previo.
+
+### 3. O paso a paso
 
 ```
-Starting Agentic SDLC run: 2025-02-10-webhook-notifications
-PRD: https://notion.so/...
-Repos: api-gateway (go), notification-worker (go), shared-events (go)
-
-Phase 1/6: BOOTSTRAP
-✓ api-gateway — CLAUDE.md found
-✓ shared-events — CLAUDE.md found
-✗ notification-worker — no CLAUDE.md, generating...
-  [spawning doc-generator] → CLAUDE.md generated, PR created: org/notification-worker#1
-
-Phase 2/6: DESIGN
-[Reading PRD from Notion...]
-[Spawning solution-designer...]
-→ Scoping Document created: https://notion.so/...
-
-⏸ Review the Scoping Document and run /sdlc-approve to continue.
+/sdlc-init         # Configura PRD + repos → manifest.yaml
+/sdlc-bootstrap    # manifest.yaml → CLAUDE.md + ARCHITECTURE.md por repo
+/sdlc-design       # PRD + repo docs → scoping-doc.md
+/sdlc-plan         # scoping-doc.md → pert.md
+/sdlc-track        # pert.md → issues en Linear
+/sdlc-execute      # issues → worktrees → PRs
+/sdlc-status       # Ver estado en cualquier momento
 ```
 
-### 4. Revisar y aprobar el diseño
+Cada skill valida que sus inputs existan. Si faltan, te dice que skill ejecutar primero.
 
-El sistema se detuvo en un **approval gate**. Revisa el Scoping Document (en Notion o en `artifacts/scoping-doc.md`) y cuando estés satisfecho:
+---
 
-```
-/sdlc-approve
-```
-
-Esto avanza a la fase **PLANNING**:
+## Flujo tipico
 
 ```
-Approved: DESIGN phase
-Advancing to: PLANNING
+> /sdlc-init
 
-[Spawning task-decomposer...]
-→ PERT created: https://notion.so/...
-  Tasks: 5 tasks across 3 repositories
+Claude: Cual es la URL del PRD?
+Tu:     https://notion.so/org/mi-prd-abc123
 
-⏸ Review the PERT and run /sdlc-approve to continue.
-```
+Claude: Agrega un repositorio.
+        Nombre: booking-app
+        Path: /Users/tu/code/booking-app
+        Team en Linear: Ignite-2026
 
-### 5. Revisar y aprobar el plan de tareas
+Claude: manifest.yaml creado. State inicializado.
 
-Revisa el PERT. Verifica que las tareas y dependencias tienen sentido. Cuando estés listo:
+> /sdlc-bootstrap
 
-```
-/sdlc-approve
-```
+Claude: Analizando booking-app...
+        CLAUDE.md no encontrado, generando...
+        [delega a doc-generator]
+        CLAUDE.md + ARCHITECTURE.md generados.
 
-Esto ejecuta **TRACKING** (crea issues en Linear) y comienza **EXECUTING**:
+> /sdlc-design
 
-```
-Approved: PLANNING phase
-Advancing to: TRACKING
+Claude: Leyendo PRD desde Notion...
+        Leyendo CLAUDE.md de booking-app...
+        [delega a solution-designer]
+        scoping-doc.md guardado en .sdlc/artifacts/
 
-Creating issues in Linear...
-  ✓ LIN-101: Define WebhookTriggered event (shared-events) — ready
-  ✓ LIN-102: Add POST /webhooks endpoint (api-gateway) — ready
-  ✓ LIN-103: Publish WebhookTriggered event (api-gateway) — blocked by LIN-101, LIN-102
-  ✓ LIN-104: Consume WebhookTriggered event (notification-worker) — blocked by LIN-101
-  ✓ LIN-105: Implement retry with backoff (notification-worker) — blocked by LIN-104
+> /sdlc-plan
 
-EXECUTING (LIN-101): Define WebhookTriggered event
-[Spawning coder in shared-events...]
-→ PR created: org/shared-events#12
-[Spawning quality-reviewer...]
-→ APPROVE
+Claude: Leyendo scoping-doc.md...
+        [delega a task-decomposer]
+        pert.md guardado en .sdlc/artifacts/
+        5 tareas identificadas con dependencias.
 
-PR ready for human review: https://github.com/org/shared-events/pull/12
-Merge when ready, then run /sdlc-resume.
-```
+> /sdlc-track
 
-### 6. Revisar, mergear, y continuar
+Claude: Parseando PERT...
+        [delega a linear-issue-creator]
+        Issue 1: Add data model (ready)
+        Issue 2: Add API endpoints (blocked by #1)
+        Issue 3: Add booking UI (blocked by #2)
+        Issue 4: Integration tests (blocked by #2, #3)
+        Issue 5: Deploy config (blocked by #4)
 
-Ahora es tu turno:
+> /sdlc-execute
 
-1. **Revisa el PR** en GitHub como lo harías normalmente
-2. **Mergea el PR** cuando estés satisfecho
-3. **Vuelve a Claude Code** y ejecuta:
+Claude: Issue #1 (Add data model) — ready
+        Creando worktree en .sdlc/worktrees/booking-app/add-data-model/
+        [delega a coder] → implementa + tests
+        [delega a quality-reviewer] → approve
+        PR creado: org/booking-app#1
 
-```
-/sdlc-resume
-```
-
-El sistema detecta el merge, actualiza Linear, desbloquea dependencias, y continúa con el siguiente issue:
-
-```
-Resume analysis:
-PR org/shared-events#12 was merged.
-Updated LIN-101 → Done
-Unblocked: LIN-103, LIN-104
-Continuing with LIN-102: Add POST /webhooks endpoint...
-```
-
-### 7. Repetir hasta completar
-
-El ciclo se repite para cada issue:
-- El sistema implementa y revisa automáticamente
-- Te presenta el PR para review humano
-- Tú mergeas
-- Ejecutas `/sdlc-resume`
-
-Cuando todos los issues están `done`:
-
-```
-All 5 issues implemented and merged!
-
-Run /sdlc-status for detailed metrics.
+        Issue #2 (Add API endpoints) — desbloqueado
+        ...
 ```
 
 ---
 
 ## Comandos disponibles
 
-| Comando | Cuándo usarlo |
+| Comando | Cuando usarlo |
 |---------|---------------|
-| `/sdlc-run` | Iniciar un nuevo run desde cero |
-| `/sdlc-approve` | Aprobar el diseño (después de DESIGN) o el plan (después de PLANNING) |
-| `/sdlc-resume` | Después de mergear un PR, o para retomar una sesión interrumpida |
-| `/sdlc-status` | En cualquier momento, para ver progreso y métricas |
+| `/sdlc` | Pipeline completo (resume desde checkpoint) |
+| `/sdlc-init` | Configurar PRD y repos por primera vez |
+| `/sdlc-bootstrap` | Generar docs de orientacion para repos |
+| `/sdlc-design` | Disenar solucion tecnica desde PRD |
+| `/sdlc-plan` | Descomponer diseno en tareas |
+| `/sdlc-track` | Crear issues en Linear |
+| `/sdlc-execute` | Implementar issues en worktrees → PRs |
+| `/sdlc-status` | Ver estado del pipeline (read-only) |
 
 ---
 
 ## Escenarios comunes
 
-### "Se me cerró Claude Code a mitad de ejecución"
+### "Se me cerro Claude Code a mitad de ejecucion"
 
-No hay problema. El estado se persiste en `state.json`:
+No hay problema. El estado se persiste en `.sdlc/state.json`:
 
 ```bash
-cd ~/go/src/yalochat/agentic-sdlc
+cd agentic-sdlc
 claude
 ```
 
 ```
-/sdlc-resume
+/sdlc
 ```
 
-El session-resumer analiza el estado real (GitHub + Linear) y retoma donde quedó.
+El pipeline resume desde el ultimo checkpoint.
 
-### "Quiero ver en qué va el run"
+### "Quiero ver en que va el pipeline"
 
 ```
 /sdlc-status
 ```
 
-Muestra: fase actual, issues por estado, métricas de agentes, y costo estimado.
-
-### "El reviewer automático rechazó el PR 3 veces"
-
-Después de 3 iteraciones del loop agente, el sistema escala al humano:
-
-```
-Agent review loop reached max iterations (3) for LIN-103.
-PR: https://github.com/org/api-gateway/pull/47
-Please review manually.
-```
-
-Revisa tú, deja comentarios en el PR, y ejecuta `/sdlc-resume`. El coder leerá tus comentarios e iterará.
-
 ### "Quiero empezar de cero"
 
 ```bash
-rm state.json metrics.jsonl
+rm -rf .sdlc/
 ```
 
 Luego:
 ```
-/sdlc-run
+/sdlc-init
 ```
 
 ### "No tengo Notion configurado"
 
-Sin problema. El sistema detecta que el MCP no está disponible y:
-- Te pide que pegues el PRD como texto
-- Guarda artefactos (Scoping Doc, PERT) en `artifacts/` localmente
+Sin problema. En `/sdlc-init` puedes apuntar a un archivo local como PRD:
 
-### "Quiero agregar un repo a mitad del run"
+```yaml
+prd: ./docs/mi-prd.md
+```
 
-Actualmente no se soporta. Termina el run actual, actualiza tu `manifest.yaml`, y empieza uno nuevo.
+### "El reviewer automatico rechazo el PR 3 veces"
 
-### "El PR necesita cambios que pidió un reviewer humano"
-
-1. El reviewer deja comentarios en el PR en GitHub
-2. Ejecutas `/sdlc-resume`
-3. El session-resumer detecta los comentarios
-4. Spawna al coder con el feedback del humano
-5. El coder hace los cambios y actualiza el PR
+Despues de 3 iteraciones, el sistema escala al humano. Revisa el PR manualmente.
 
 ---
 
-## Ejemplo completo: de PRD a PRs mergeados
+## Configuracion: manifest.yaml
 
-```
-# 1. Setup
-cd ~/go/src/yalochat/agentic-sdlc
-cp manifest.example.yaml manifest.yaml  # copiar plantilla
-vim manifest.yaml                       # configurar repos y PRD
-claude                             # abrir Claude Code
-
-# 2. Ejecutar
-> /sdlc-run                        # inicia BOOTSTRAP → DESIGN
-                                   # (espera)
-
-> /sdlc-approve                    # aprueba diseño → PLANNING
-                                   # (espera)
-
-> /sdlc-approve                    # aprueba plan → TRACKING → EXECUTING
-                                   # el sistema implementa el primer issue
-                                   # (espera PR review)
-
-# 3. Iterar por cada PR
-# -- en GitHub: revisar y mergear PR --
-> /sdlc-resume                     # detecta merge, continúa con siguiente issue
-# -- en GitHub: revisar y mergear PR --
-> /sdlc-resume                     # siguiente issue...
-# ... repetir hasta terminar
-
-# 4. Ver resultados
-> /sdlc-status                     # resumen final con métricas
+```yaml
+prd: https://notion.so/org/mi-prd-abc123    # o ./local-prd.md
+repos:
+  - name: api-gateway
+    path: ../api-gateway
+    team: Backend
+  - name: web-app
+    path: ../web-app
+    team: Frontend
 ```
 
----
+| Campo | Requerido | Descripcion |
+|-------|-----------|-------------|
+| `prd` | Si | URL de Notion o path local al PRD |
+| `repos[].name` | Si | Nombre corto (usado en Linear y state) |
+| `repos[].path` | Si | Path al repo (relativo o absoluto) |
+| `repos[].team` | Si | Team de Linear donde crear los issues |
 
-## Estructura de archivos generados
-
-Durante un run, el sistema genera:
-
-```
-agentic-sdlc/
-  state.json          ← estado del run (fase, issues, métricas)
-  metrics.jsonl       ← tokens por invocación de agente
-  artifacts/          ← solo si Notion no está disponible
-    prd.md
-    scoping-doc.md
-    pert.md
-    pert-tasks.json
-```
+Crea interactivamente con `/sdlc-init` o copia de `manifest.example.yaml`.
 
 ---
 
 ## Tips
 
-1. **Repos limpios**: Asegúrate de que tus repos estén en `main` y sin cambios locales antes de empezar.
+1. **Repos limpios**: Asegurate de que tus repos esten en `main` y sin cambios locales antes de empezar.
 
-2. **PRD detallado**: Mientras más específico sea tu PRD (endpoints, campos, comportamientos), mejor será el diseño y las tareas generadas.
+2. **PRD detallado**: Mientras mas especifico sea tu PRD (endpoints, campos, comportamientos), mejor sera el diseno y las tareas generadas.
 
-3. **CLAUDE.md en tus repos**: Si tus repos ya tienen `CLAUDE.md`, el sistema los usa directamente (no spawna doc-generator). Un buen CLAUDE.md mejora significativamente la calidad del código generado.
+3. **CLAUDE.md en tus repos**: Si tus repos ya tienen `CLAUDE.md`, el sistema los usa directamente (no genera nuevos). Un buen CLAUDE.md mejora la calidad del codigo generado.
 
 4. **Linear teams**: Los teams en tu `manifest.yaml` deben coincidir exactamente con los nombres de teams en tu workspace de Linear.
 
-5. **Métricas de costo**: Ejecuta `/sdlc-status` al final para ver cuántos tokens consumió cada agente y el costo estimado.
-
-6. **Sesiones largas**: Para features grandes (>10 tareas), es normal que el run se extienda por varias sesiones de Claude Code. El sistema está diseñado para esto — usa `/sdlc-resume` cada vez que retomes.
-
-7. **Context window**: Si la sesión se pone lenta, cierra y reabre Claude Code. Luego `/sdlc-resume` — el contexto se reconstruye desde state.json.
+5. **Sesiones largas**: Para features grandes (>10 tareas), es normal que el pipeline se extienda por varias sesiones. Usa `/sdlc` para resumir.
