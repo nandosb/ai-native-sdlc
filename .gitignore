@@ -7,8 +7,14 @@
 # OS
 .DS_Store
 
-# Personal overrides
+# Local files 
 .claude/settings.local.json
+manifest.yaml
+state.json
+
+# SDLC outputs
+/artifacts
+/logs
 
 # IDE
 .idea/

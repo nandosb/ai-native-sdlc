@@ -4,3 +4,7 @@ repos:
       path: /Users/jorgevillafuerte/Documents/projects/frontend-platform
       team: DemoIgnite
       language: ""
+    - name: agent-platform-bff
+      path: /Users/jorgevillafuerte/Documents/projects/agent-platform-bff
+      team: DemoIgnite
+      language: ""

@@ -9,7 +9,14 @@
       "Bash(gh *)",
       "Bash(ls *)",
       "Bash(mkdir *)",
-      "Bash(cat *)"
+      "Bash(cat *)",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-create-pages",
+      "mcp__claude_ai_Notion__notion-update-page",
+      "mcp__linear__list_issues",
+      "mcp__linear__create_issue",
+      "mcp__linear__list_teams",
+      "mcp__linear__get_issue"
     ],
     "deny": [
       "Bash(rm -rf /)",
